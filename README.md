@@ -242,7 +242,7 @@ Run `python server.py` and add your own `.md`, `.txt` or `.pdf` files. You can d
 - **Citations:** an answer drawn from an upload shows its citation chip in the accent colour with a dot, so you can see at a glance whether it came from your file or the base docs.
 - **Grounding is unchanged:** uploads go through the same gate, prompt, generator and validator. Scoping only filters retrieval (`Index.search(..., doc_ids=[...])`).
 - **Limits:**
-  - `.md`, `.txt` and `.pdf` only (PDF text is extracted page by page with pypdf; pages without text are skipped);
+  - `.md`, `.txt` and `.pdf` only. PDF text is extracted page by page with pypdf, and pages without text are skipped. Some PDFs, such as Google Docs exports, extract as one word per line; those fall back to pypdf's layout mode. Lines are then reflowed into paragraphs so a wrapped sentence stays one sentence;
   - ≤ 2 MB per file, ≤ 5 files per request, ≤ 20 uploaded docs;
   - filenames are sanitised to `[a-z0-9_-]` plus the extension, so path traversal is impossible;
   - a name that clashes with a base doc gets 409;
@@ -253,7 +253,10 @@ Run `python server.py` and add your own `.md`, `.txt` or `.pdf` files. You can d
 **How suggested questions are verified.**
 1. Candidates:
    - With Claude available, Claude proposes 5 questions answerable only from the file.
-   - Otherwise, deterministic templates turn factual sentences that contain numbers into questions ("The Starter plan costs $29" → "How much does the Starter plan cost?") and add heading-based questions.
+   - Otherwise, deterministic templates:
+     - turn factual sentences that contain numbers into questions ("The Starter plan costs $29" → "How much does the Starter plan cost?");
+     - ask about ID-like terms the doc repeats ("What is AITF-14?");
+     - add heading-based questions.
 2. **Each candidate is run through the full pipeline, scoped to that file.**
 3. Only questions that come back `supported=true` with `validation_passed` and a citation of that file are kept, up to 3.
 
@@ -266,7 +269,7 @@ So the UI never suggests a question the system would refuse. The upload is logge
 - Lexical retrieval misses paraphrases ("sign-in" vs "login", "cash out" vs "withdraw").
 - Thresholds are tuned on 10 questions, which is too few to be a reliable estimate.
 - V5 only catches fabricated numbers. A wrong but number-free claim passes the validator if its citations are valid.
-- Extractive answers are verbatim sentences: grounded, but sometimes stilted or missing context from the neighbouring sentence.
+- Extractive answers are verbatim sentences: grounded, but sometimes stilted or missing context from the neighbouring sentence. A candidate sentence must have ≥ 4 words and add a content word or number the question lacks. Without that rule, a fragment such as a lone "AITF-14" line in a PDF would "cover" *What is AITF-14?* completely and pass every check while saying nothing.
 - Uploads rebuild the whole TF-IDF index, and IDF shifts with each new doc. Fine for dozens of docs, not thousands. Deterministic suggestion templates only cover "X is/costs/takes …" style facts; other docs may get fewer (or no) suggestions, but never unverified ones.
 - The lexical key-term gate may refuse valid paraphrased questions on new corpora (e.g. an acronym that the docs spell out). This fails safe: the result is a refusal, never a fabrication.
 

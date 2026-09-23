@@ -11,7 +11,10 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 
+from collections import Counter
+
 from .controls import AskOptions
+from .gate import key_terms
 from .generate import claude_available, get_generator
 from .ingest import split_sentences
 from .obs import log
@@ -26,6 +29,8 @@ _SUBJECT_VERB = re.compile(
     r"^(?:(the|a|an)\s+)?((?:[\w'-]+\s+){0,4}?[\w'-]+)\s+"
     r"(is|are|costs?|takes?|lasts?|expires?|includes?|allows?|requires?|receives?|gets?|locks?)\b",
     re.I)
+_NOT_A_SUBJECT = {"it", "this", "that", "these", "those", "they", "we", "you", "he", "she", "there",
+                  "because", "and", "but", "or", "so", "if", "when", "which", "what", "who"}
 _QUESTION_FORM = {  # verb base -> question template ({aux} is does/do)
     "cost": "How much {aux} {np} cost?",
     "take": "How long {aux} {np} take?",
@@ -59,6 +64,8 @@ def sentence_question(sentence: str) -> str | None:
     if not m:
         return None
     article, np, verb = m.group(1), m.group(2).strip(), m.group(3).lower()
+    if np.split()[0].lower() in _NOT_A_SUBJECT:
+        return None
     np = f"the {np}" if article else _lower_first(np)
     if verb in ("is", "are"):
         return f"What {verb} {np}?"
@@ -77,6 +84,12 @@ def template_candidates(doc_id: str, chunks) -> list[str]:
                 q = sentence_question(sentence)
                 if q:
                     out.append(q)
+    # ID-like terms the doc mentions repeatedly (AITF-14, GraphQL): "What is AITF-14?".
+    # All-caps words alone are skipped: in code samples they are keywords (SELECT, ORDER).
+    terms = Counter(t for c in chunks for t in key_terms(c.text)
+                    if len(t) >= 3 and not t.isdigit()
+                    and (any(ch.isdigit() for ch in t) or re.search(r"[a-z][A-Z]", t)))
+    out.extend(f"What is {t}?" for t, n in terms.most_common(5) if n >= 2)
     title = _title(doc_id)
     for heading in dict.fromkeys(c.heading for c in chunks if c.heading):
         h = _lower_first(heading.strip())

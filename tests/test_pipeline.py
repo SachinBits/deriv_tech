@@ -585,3 +585,34 @@ def test_eval_isolated_from_uploads(tmp_path):
         if not existed:
             shutil.rmtree(uploads, ignore_errors=True)
     assert load(tmp_path / "without") == load(tmp_path / "with")
+
+
+# ---------- regressions: fragmented PDF text and question-echo answers ----------
+
+def test_pdf_reflow_joins_fragmented_lines():
+    from rag.ingest import _fragmented, _reflow
+
+    word_per_line = "AITF-14\n \nis\n \nthe\n \nauto-expiry\n \nfeature."
+    assert _fragmented(word_per_line)
+    layout = "AITF-14 is the pipeline stage auto-\nexpiry feature for deals.\n\nNext paragraph."
+    assert _reflow(layout) == "AITF-14 is the pipeline stage auto-expiry feature for deals.\n\nNext paragraph."
+
+
+def _hit(text, chunk_id="u_0"):
+    return [{"doc_id": "u.pdf", "chunk_id": chunk_id, "score": 0.5, "text": text}]
+
+
+def test_extractive_rejects_fragment_that_only_echoes_question():
+    gen = ExtractiveGenerator()
+    only_fragments = gen.generate("What is AITF-14", _hit("AITF-14\nAITF-14.\nAITF-14,\nAITF"))
+    assert only_fragments["supported"] is False
+    with_answer = gen.generate("What is AITF-14", _hit(
+        "AITF-14\nAITF-14 is the automatic expiry of stale pipeline stages."))
+    assert with_answer["supported"] is True
+    assert with_answer["answer"] == "AITF-14 is the automatic expiry of stale pipeline stages."
+
+
+def test_extractive_keeps_sentence_whose_new_information_is_a_number():
+    r = ExtractiveGenerator().generate("How many password reset requests can a user make per hour?",
+                                       _hit("Users can request up to 3 password resets per hour."))
+    assert r["supported"] is True and "3" in r["answer"]

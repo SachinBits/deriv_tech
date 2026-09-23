@@ -13,6 +13,9 @@ CHUNK_CHARS = 400
 MIN_SCORE = 0.10
 # Extractive generator: fraction of the question's content tokens a sentence must contain.
 MIN_COVERAGE = 0.6
+# An answer sentence needs at least this many words and one content word not in the question,
+# so a fragment that only repeats the question ("AITF-14") never counts as an answer.
+MIN_ANSWER_WORDS = 4
 # Extra sentences for longer answers need at least this coverage.
 EXTRA_SENTENCE_COVERAGE = 0.3
 

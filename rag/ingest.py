@@ -25,12 +25,49 @@ class Chunk:
         return asdict(self)
 
 
+def _reflow(text: str) -> str:
+    """Join visual lines into paragraphs (blank lines separate paragraphs).
+
+    A line ending in "-" is joined without a space and the hyphen is kept: PDFs don't mark soft
+    hyphens, and dropping a real one would corrupt terms like "auto-expiry" or "AITF-14".
+    """
+    paragraphs = []
+    for block in re.split(r"\n\s*\n", text):
+        lines = [re.sub(r"[ \t]{2,}", " ", l).strip() for l in block.splitlines()]
+        joined = ""
+        for line in filter(None, lines):
+            if re.search(r"\w-$", joined):
+                joined += line  # "auto-" + "expiry"
+            else:
+                joined = f"{joined} {line}".strip()
+        if joined:
+            paragraphs.append(joined)
+    return "\n\n".join(paragraphs)
+
+
+def _fragmented(text: str) -> bool:
+    """True when extraction produced roughly one word per line (common for Google Docs exports)."""
+    lengths = sorted(len(l.strip()) for l in text.splitlines() if l.strip())
+    return bool(lengths) and lengths[len(lengths) // 2] < 15
+
+
 def pdf_text(data: bytes) -> str:
-    """Extract text page by page with pypdf (imported lazily); pages without text are skipped."""
+    """Extract text page by page with pypdf (imported lazily); pages without text are skipped.
+
+    If the default extraction is fragmented, layout mode is used instead. Lines are then
+    reflowed into paragraphs, so a sentence that wraps across lines stays one sentence.
+    """
     from pypdf import PdfReader
 
-    pages = [(page.extract_text() or "").strip() for page in PdfReader(io.BytesIO(data)).pages]
-    return "\n\n".join(p for p in pages if p)
+    pages = []
+    for page in PdfReader(io.BytesIO(data)).pages:
+        text = page.extract_text() or ""
+        if _fragmented(text):
+            text = page.extract_text(extraction_mode="layout") or text
+        text = _reflow(text)
+        if text:
+            pages.append(text)
+    return "\n\n".join(pages)
 
 
 def read_text(name: str, data: bytes) -> str:

@@ -65,13 +65,18 @@ class ExtractiveGenerator:
                  length: str | None = None) -> dict:
         # `prompt` is accepted for interface parity with ClaudeGenerator and ignored here.
         q_tokens = self.content_tokens(question)
+        q_numbers = set(re.findall(r"\d+", question))
         candidates, seen = [], set()
         for hit in hits:
             for sentence in split_sentences(hit["text"]):
-                if sentence not in seen:
+                tokens = set(self.content_tokens(sentence))
+                # New information = a content word or a number the question doesn't already have.
+                # (Numbers are checked separately: the analyzer drops 1-char tokens like "3".)
+                adds_info = bool(tokens - set(q_tokens)) or bool(set(re.findall(r"\d+", sentence)) - q_numbers)
+                informative = word_count(sentence) >= config.MIN_ANSWER_WORDS and adds_info
+                if sentence not in seen and informative:
                     seen.add(sentence)
-                    candidates.append({"text": sentence, "chunk_id": hit["chunk_id"],
-                                       "tokens": set(self.content_tokens(sentence))})
+                    candidates.append({"text": sentence, "chunk_id": hit["chunk_id"], "tokens": tokens})
 
         if not q_tokens or not candidates:
             return self._refuse(q_tokens, 0.0)
