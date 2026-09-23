@@ -56,6 +56,19 @@ Flags shared by `run_pipeline.py` and `app.py`:
 
 `run_pipeline.py` also takes `--questions PATH`. `app.py` also takes `--show-prompt` and `--verbose`.
 
+### Environment variables
+
+`.env` is **not** auto-loaded. Export the variables yourself, for example with `set -a; source .env; set +a` (see `.env.example`).
+
+| Variable | Effect |
+|---|---|
+| `ANTHROPIC_API_KEY` | When set, `--generator auto` (the default) uses **Claude**. For a fully offline, reproducible run, pass `--generator extractive`. |
+| `CLAUDE_MODEL` | Claude model id (default `claude-haiku-4-5-20251001`). |
+| `SUPABASE_URL` | Enables the Supabase sink, together with a key. |
+| `SUPABASE_SECRET_KEY` **or** `SUPABASE_SERVICE_KEY` | Either name is accepted (the secret key name is checked second). |
+
+The committed artifacts (`retrieval_results.json`, `answers.json`, `validation_report.json`) were generated offline with `python run_pipeline.py --generator extractive`.
+
 ### Run the UI
 
 ```bash
@@ -145,7 +158,7 @@ On this eval set the threshold adds no accuracy, because the always-on safeguard
 ## Optional Claude mode
 
 ```bash
-# see .env.example; the app reads real environment variables (it does not load .env)
+# .env is not auto-loaded: set -a; source .env; set +a
 export ANTHROPIC_API_KEY=sk-ant-...
 export CLAUDE_MODEL=claude-haiku-4-5-20251001   # optional; this is the default
 python run_pipeline.py                          # auto → Claude when the key is set
@@ -167,7 +180,7 @@ A batch run shares one `run_id`, and each API request gets its own.
 
 ## Optional Supabase sink
 
-If `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set (`SUPABASE_SECRET_KEY` also works), results are persisted over PostgREST to the tables created by migration `001_init_support_qa`. The code never runs migrations.
+If `SUPABASE_URL` and a key (`SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_KEY`) are set, results are persisted over PostgREST to the tables created by migration `001_init_support_qa`. The code never runs migrations.
 
 | Where | Table | What |
 |---|---|---|
@@ -178,7 +191,7 @@ If `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set (`SUPABASE_SECRET_KEY` also
 
 - **Headers:** `apikey: <key>`, `Content-Type: application/json` and `Prefer: return=minimal`. There is **no** `Authorization: Bearer` header, because new `sb_secret_…` keys are not JWTs. The chunk upsert adds `resolution=merge-duplicates`.
 - **Failures:** writes are best-effort with a 5 s timeout. A failure is logged as `stage=sink` and never changes an answer.
-- **Loading `.env`:** the app doesn't load `.env` itself. Use `set -a; source .env; set +a` or export the variables. Note that this also exports `ANTHROPIC_API_KEY`, which makes `--generator auto` use Claude.
+- **Loading `.env`:** it isn't auto-loaded; see [Environment variables](#environment-variables). Sourcing it also exports `ANTHROPIC_API_KEY`, which makes `--generator auto` use Claude.
 
 ## Limitations
 
