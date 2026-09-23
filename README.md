@@ -1,5 +1,7 @@
 # Grounded Support QA (local RAG)
 
+**Live demo:** https://deriv-tech.vercel.app. It serves the 6 base docs, with Claude enabled. Document upload is local-only, so it is hidden there (see [why](#try-your-own-docs-local)).
+
 Answers support questions **only** from a local knowledge base, cites the chunks it used, and refuses when the docs don't support an answer. It runs fully offline by default (TF-IDF retrieval plus an extractive generator). Claude is an optional, swappable generator behind the same interface.
 
 - **Knowledge base:** the 6 product docs in `docs/`. When running locally, the web UI also accepts your own `.md`, `.txt` and `.pdf` files (see [Try your own docs](#try-your-own-docs-local)).
@@ -93,6 +95,8 @@ The committed artifacts (`retrieval_results.json`, `answers.json`, `validation_r
 python server.py        # then open http://localhost:8000
 PORT=8001 python server.py   # if port 8000 is taken ("address already in use")
 ```
+
+Or use the hosted version: https://deriv-tech.vercel.app.
 
 The server doesn't auto-reload. Restart it after pulling changes, then hard-reload the page (Cmd+Shift+R).
 
