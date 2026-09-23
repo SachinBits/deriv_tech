@@ -1,0 +1,180 @@
+[
+  {
+    "question_id": "q1",
+    "answer": "Users can request up to 3 password resets per hour. Additional requests within the same hour are rejected.",
+    "citations": [
+      "auth_password_reset.md"
+    ],
+    "cited_chunks": [
+      "auth_password_reset_1"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "auth_password_reset_1",
+      "auth_password_reset_2",
+      "auth_password_reset_4",
+      "account_2fa_2"
+    ],
+    "generator": "claude"
+  },
+  {
+    "question_id": "q2",
+    "answer": "The API rate limit for the Enterprise plan is 1,000 requests per minute, measured over a rolling one-minute window.",
+    "citations": [
+      "api_rate_limits.md"
+    ],
+    "cited_chunks": [
+      "api_rate_limits_1"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "api_rate_limits_1",
+      "api_rate_limits_3",
+      "api_rate_limits_0",
+      "api_rate_limits_2"
+    ],
+    "generator": "claude"
+  },
+  {
+    "question_id": "q3",
+    "answer": "KYC review is completed within 24 hours of submission. Customers receive an email when the review is finished.",
+    "citations": [
+      "kyc_verification.md"
+    ],
+    "cited_chunks": [
+      "kyc_verification_2"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "kyc_verification_2",
+      "kyc_verification_3",
+      "kyc_verification_0",
+      "withdrawals_4"
+    ],
+    "generator": "claude"
+  },
+  {
+    "question_id": "q4",
+    "answer": "The daily withdrawal limit is $10,000. This limit covers the total of all withdrawal requests made by an account in a single calendar day.",
+    "citations": [
+      "withdrawals.md"
+    ],
+    "cited_chunks": [
+      "withdrawals_2"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "withdrawals_2",
+      "api_rate_limits_1",
+      "withdrawals_4",
+      "api_rate_limits_2"
+    ],
+    "generator": "claude"
+  },
+  {
+    "question_id": "q5",
+    "answer": "For P1 incidents, the on-call engineer must respond within 15 minutes.",
+    "citations": [
+      "incident_escalation.md"
+    ],
+    "cited_chunks": [
+      "incident_escalation_2"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "incident_escalation_2",
+      "incident_escalation_4",
+      "incident_escalation_1",
+      "incident_escalation_3"
+    ],
+    "generator": "claude"
+  },
+  {
+    "question_id": "q6",
+    "answer": "When a client exceeds the API rate limit, they receive an HTTP 429 Too Many Requests response with a Retry-After header that specifies how many seconds to wait before retrying. Clients should back off and retry after that interval instead of retrying immediately.",
+    "citations": [
+      "api_rate_limits.md"
+    ],
+    "cited_chunks": [
+      "api_rate_limits_3"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "api_rate_limits_1",
+      "api_rate_limits_3",
+      "api_rate_limits_0",
+      "api_rate_limits_2"
+    ],
+    "generator": "claude"
+  },
+  {
+    "question_id": "q7",
+    "answer": "I can't answer this from the available documentation. Not covered: VIP.",
+    "citations": [],
+    "cited_chunks": [],
+    "supported": false,
+    "refusal_reason": "key_term_not_in_docs",
+    "retrieved_sources": [
+      "account_2fa_3",
+      "withdrawals_4",
+      "kyc_verification_4",
+      "account_2fa_4"
+    ],
+    "generator": "claude"
+  },
+  {
+    "question_id": "q8",
+    "answer": "I can't answer this from the available documentation. Not covered: GraphQL.",
+    "citations": [],
+    "cited_chunks": [],
+    "supported": false,
+    "refusal_reason": "key_term_not_in_docs",
+    "retrieved_sources": [
+      "api_rate_limits_1",
+      "api_rate_limits_3",
+      "api_rate_limits_0",
+      "api_rate_limits_2"
+    ],
+    "generator": "claude"
+  },
+  {
+    "question_id": "q9",
+    "answer": "I can't answer this from the available documentation. The context only covers bank transfer withdrawals, which take 1 to 3 business days, but does not include information about crypto withdrawal timelines.",
+    "citations": [],
+    "cited_chunks": [],
+    "supported": false,
+    "refusal_reason": "model_unsupported",
+    "retrieved_sources": [
+      "withdrawals_4",
+      "withdrawals_1",
+      "auth_password_reset_3",
+      "account_2fa_1"
+    ],
+    "generator": "claude"
+  },
+  {
+    "question_id": "q10",
+    "answer": "I can't answer this from the available documentation. The context defines what P1 outages are but does not cover whether service credits are issued for them.",
+    "citations": [
+      "incident_escalation.md"
+    ],
+    "cited_chunks": [
+      "incident_escalation_1"
+    ],
+    "supported": false,
+    "refusal_reason": "model_unsupported",
+    "retrieved_sources": [
+      "kyc_verification_2",
+      "incident_escalation_1",
+      "api_rate_limits_2",
+      "withdrawals_0"
+    ],
+    "generator": "claude"
+  }
+]

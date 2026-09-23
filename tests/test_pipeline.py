@@ -273,3 +273,125 @@ def test_sink_failure_is_swallowed(monkeypatch):
     monkeypatch.setattr(rag.sinks.urllib.request, "urlopen", boom)
     sink = rag.sinks.SupabaseSink("https://example.supabase.co", "sb_secret_test")
     assert sink.log_eval_run("r", "extractive", {}, {}) is False
+
+
+# ---------- Claude path with a stubbed client (no network, no key) ----------
+
+class _StubMessages:
+    def __init__(self, reply):
+        self.reply = reply
+        self.calls = []
+
+    def create(self, **kwargs):
+        from types import SimpleNamespace
+
+        self.calls.append(kwargs)
+        if isinstance(self.reply, Exception):
+            raise self.reply
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=self.reply)])
+
+
+def stub_claude(reply):
+    from types import SimpleNamespace
+
+    from rag.generate import ClaudeGenerator
+
+    gen = ClaudeGenerator()
+    gen._client = SimpleNamespace(messages=_StubMessages(reply))
+    return gen
+
+
+def claude_json(answer, cited, supported=True):
+    import json
+
+    return json.dumps({"answer": answer, "cited_chunk_ids": cited, "supported": supported})
+
+
+@pytest.fixture(scope="module")
+def grounded_case(index):
+    """First answerable question, its top chunk, and one verbatim sentence containing a number."""
+    q = ANSWERABLE[0]["question"]
+    top = index.search(q, config.TOP_K)[0]
+    sentence = next(s for s in split_sentences(top["text"]) if re.search(r"\d", s))
+    return q, top, sentence
+
+
+def ask_claude(q, index, gen):
+    return answer_question(q, index, gen, AskOptions(generator="claude"))
+
+
+def test_claude_grounded_answer_passes(index, grounded_case):
+    q, top, sentence = grounded_case
+    gen = stub_claude(claude_json(sentence, [top["chunk_id"]]))
+    r = ask_claude(q, index, gen)
+    assert r["supported"] is True and r["validation_passed"] is True
+    assert r["answer"] == sentence and r["cited_chunks"] == [top["chunk_id"]]
+    assert r["generator"] == "claude"
+    sent = gen._client.messages.calls[0]
+    assert sent["extra_body"] == {"temperature": 0}
+    assert f"[{top['chunk_id']}]" in sent["messages"][0]["content"]
+    assert sent["messages"][0]["content"] == r["prompt"]  # the pipeline's prompt is what gets sent
+
+
+def test_claude_invented_number_refused_by_v5(index, grounded_case):
+    q, top, sentence = grounded_case
+    grounded = {n.replace(",", "") for n in re.findall(r"\d+(?:[.,:]\d+)*", top["text"])}
+    fake = next(str(n) for n in range(7, 10_000) if str(n) not in grounded)
+    invented = re.sub(r"\d+(?:[.,:]\d+)*", fake, sentence, count=1)
+    r = ask_claude(q, index, stub_claude(claude_json(invented, [top["chunk_id"]])))
+    assert r["supported"] is False and r["answer"] == config.REFUSAL
+    assert r["refusal_reason"] == "validation_failed"
+    v5 = next(c for c in r["checks"] if c["name"] == "numbers_grounded")
+    assert v5["passed"] is False and fake in v5["detail"]
+
+
+@pytest.mark.parametrize("reply", [
+    "Sure! Here is the answer: 3 resets per hour.",
+    '{"answer": "3 resets", "cited_chunk_ids": "not-a-list", "supported": true}',
+    '{"answer": "truncated',
+], ids=["prose", "wrong_schema", "truncated"])
+def test_claude_bad_json_fails_closed(index, grounded_case, reply):
+    q, _, _ = grounded_case
+    r = ask_claude(q, index, stub_claude(reply))
+    assert r["supported"] is False and r["answer"] == config.REFUSAL
+    assert r["refusal_reason"] == "model_unsupported" and r["citations"] == []
+
+
+def test_claude_api_error_fails_closed(index, grounded_case):
+    anthropic = pytest.importorskip("anthropic")
+    httpx2 = pytest.importorskip("httpx2")
+    q, _, _ = grounded_case
+    err = anthropic.APIConnectionError(request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages"))
+    r = ask_claude(q, index, stub_claude(err))
+    assert r["supported"] is False and r["answer"] == config.REFUSAL
+    assert r["refusal_reason"] == "model_unsupported" and "connection" in r["error"]
+
+
+def test_claude_citation_outside_retrieved_refused(index, grounded_case):
+    q, top, sentence = grounded_case
+    retrieved = {h["chunk_id"] for h in index.search(q, config.TOP_K)}
+    outside = next(c.chunk_id for c in index.chunks if c.chunk_id not in retrieved)
+    r = ask_claude(q, index, stub_claude(claude_json(sentence, [outside])))
+    assert r["supported"] is False and r["answer"] == config.REFUSAL
+    assert r["refusal_reason"] == "validation_failed"
+    v3 = next(c for c in r["checks"] if c["name"] == "citations_in_retrieved")
+    assert v3["passed"] is False and outside in v3["detail"]
+
+
+def test_claude_unsupported_without_refusal_prefix_is_marked(index, grounded_case):
+    q, _, _ = grounded_case
+    r = ask_claude(q, index, stub_claude(claude_json("The docs do not say.", [], supported=False)))
+    assert r["supported"] is False and r["answer"].startswith(config.REFUSAL)
+    assert r["refusal_reason"] == "model_unsupported"
+
+
+def test_claude_call_matches_installed_sdk_signature(index, grounded_case):
+    """The stub accepts any kwargs, so check them against the real SDK method signature."""
+    import inspect
+
+    anthropic = pytest.importorskip("anthropic")
+    q, top, sentence = grounded_case
+    gen = stub_claude(claude_json(sentence, [top["chunk_id"]]))
+    ask_claude(q, index, gen)
+    params = inspect.signature(anthropic.Anthropic(api_key="test").messages.create).parameters
+    assert set(gen._client.messages.calls[0]) <= set(params)

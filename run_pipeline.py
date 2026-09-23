@@ -111,7 +111,11 @@ def main() -> None:
         "retrieval_hit_at_k": round(hits_at_k / len(with_doc), 4) if with_doc else None,
         "retrieval_k": args.k,
         "retrieval_evaluated": len(with_doc),
+        "avg_words_supported": (round(sum(word_count(r["answer"]) for r in records if r["supported"])
+                                      / max(1, sum(r["supported"] for r in records)), 1)),
+        "avg_latency_ms": round(sum(r["latency_ms"] for r in records) / len(records), 1) if records else None,
         "generator": generator.name,
+        "model": getattr(generator, "model", None),
         "options_applied": options.applied(),
         "thresholds": {"min_score": config.MIN_SCORE, "min_coverage": config.MIN_COVERAGE},
         "ablation": ablation,

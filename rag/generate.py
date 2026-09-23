@@ -163,8 +163,10 @@ class ClaudeGenerator:
             response = self._client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens_for(length),
-                temperature=0,
                 messages=[{"role": "user", "content": prompt}],
+                # anthropic 1.x removed the `temperature` kwarg, but Haiku 4.5 still honours it
+                # in the request body. Models that reject it return a 400, which fails closed.
+                extra_body={"temperature": 0},
             )
             text = "".join(b.text for b in response.content if b.type == "text")
             result = parse_model_json(text)
@@ -174,7 +176,7 @@ class ClaudeGenerator:
             return self._fail(f"api_status_{e.status_code}: {e}")
         except anthropic.APIConnectionError as e:
             return self._fail(f"connection: {e}")
-        except (ValueError, TypeError) as e:  # includes json.JSONDecodeError
+        except ValueError as e:  # includes json.JSONDecodeError and schema mismatches
             return self._fail(f"bad_json: {e}")
         except Exception as e:  # e.g. missing credentials; always fail closed
             return self._fail(f"{type(e).__name__}: {e}")

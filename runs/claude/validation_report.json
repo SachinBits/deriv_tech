@@ -10,10 +10,10 @@
     "retrieval_hit_at_k": 1.0,
     "retrieval_k": 4,
     "retrieval_evaluated": 6,
-    "avg_words_supported": 24.2,
-    "avg_latency_ms": 1.0,
-    "generator": "extractive",
-    "model": null,
+    "avg_words_supported": 22.2,
+    "avg_latency_ms": 978.6,
+    "generator": "claude",
+    "model": "claude-haiku-4-5-20251001",
     "options_applied": {
       "confidence_threshold": {
         "enabled": true,
@@ -32,8 +32,8 @@
         "refusal_correct": 10,
         "evaluated": 10,
         "refusal_reasons": {
-          "insufficient_coverage": 2,
-          "key_term_not_in_docs": 2
+          "key_term_not_in_docs": 2,
+          "model_unsupported": 2
         }
       },
       "threshold_off": {
@@ -42,23 +42,23 @@
         "refusal_correct": 10,
         "evaluated": 10,
         "refusal_reasons": {
-          "insufficient_coverage": 2,
-          "key_term_not_in_docs": 2
+          "key_term_not_in_docs": 2,
+          "model_unsupported": 2
         }
       },
       "length": {
         "short": {
-          "avg_words": 11.3,
+          "avg_words": 14.3,
           "answered": 6,
           "validation_pass_rate": 1.0
         },
         "medium": {
-          "avg_words": 24.2,
+          "avg_words": 22.2,
           "answered": 6,
           "validation_pass_rate": 1.0
         },
         "detailed": {
-          "avg_words": 46.3,
+          "avg_words": 27.7,
           "answered": 6,
           "validation_pass_rate": 1.0
         }
@@ -73,7 +73,7 @@
       "correct_behavior": true,
       "refusal_reason": null,
       "top_score": 0.3555,
-      "coverage": 0.8333,
+      "coverage": null,
       "checks": [
         {
           "name": "non_empty",
@@ -114,7 +114,7 @@
       "correct_behavior": true,
       "refusal_reason": null,
       "top_score": 0.5934,
-      "coverage": 1.0,
+      "coverage": null,
       "checks": [
         {
           "name": "non_empty",
@@ -155,7 +155,7 @@
       "correct_behavior": true,
       "refusal_reason": null,
       "top_score": 0.3508,
-      "coverage": 0.75,
+      "coverage": null,
       "checks": [
         {
           "name": "non_empty",
@@ -196,7 +196,7 @@
       "correct_behavior": true,
       "refusal_reason": null,
       "top_score": 0.4141,
-      "coverage": 1.0,
+      "coverage": null,
       "checks": [
         {
           "name": "non_empty",
@@ -237,7 +237,7 @@
       "correct_behavior": true,
       "refusal_reason": null,
       "top_score": 0.5509,
-      "coverage": 0.8,
+      "coverage": null,
       "checks": [
         {
           "name": "non_empty",
@@ -278,7 +278,7 @@
       "correct_behavior": true,
       "refusal_reason": null,
       "top_score": 0.3825,
-      "coverage": 0.8333,
+      "coverage": null,
       "checks": [
         {
           "name": "non_empty",
@@ -288,7 +288,7 @@
         {
           "name": "supported_has_citation",
           "passed": true,
-          "detail": "2 citation(s)"
+          "detail": "1 citation(s)"
         },
         {
           "name": "citations_in_retrieved",
@@ -399,9 +399,9 @@
       "expected_behavior": "partially_answerable",
       "supported": false,
       "correct_behavior": true,
-      "refusal_reason": "insufficient_coverage",
+      "refusal_reason": "model_unsupported",
       "top_score": 0.164,
-      "coverage": 0.3333,
+      "coverage": null,
       "checks": [
         {
           "name": "non_empty",
@@ -440,9 +440,9 @@
       "expected_behavior": "unanswerable",
       "supported": false,
       "correct_behavior": true,
-      "refusal_reason": "insufficient_coverage",
+      "refusal_reason": "model_unsupported",
       "top_score": 0.1659,
-      "coverage": 0.5,
+      "coverage": null,
       "checks": [
         {
           "name": "non_empty",
@@ -457,7 +457,7 @@
         {
           "name": "citations_in_retrieved",
           "passed": true,
-          "detail": "no citations"
+          "detail": "all citations retrieved"
         },
         {
           "name": "unsupported_marked",

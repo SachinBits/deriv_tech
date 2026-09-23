@@ -166,8 +166,40 @@ python app.py --generator claude --question "What is the daily withdrawal limit?
 ```
 
 - `anthropic` is imported lazily inside `ClaudeGenerator`, so offline mode works without the package.
-- The model must return JSON only (`{"answer", "cited_chunk_ids", "supported"}`) at temperature 0. Any API, parse or schema error returns the refusal.
+- The model must return JSON only (`{"answer", "cited_chunk_ids", "supported"}`). Temperature 0 is sent via `extra_body`, because `anthropic` 1.x removed the `temperature` keyword. Haiku 4.5 honours it; a model that rejects it returns a 400, which fails closed.
 - The same gate and validator apply to Claude's output.
+- **Fail-closed behaviour:** if the LLM call fails mid-run, the answer becomes a refusal rather than silently switching to extractive. An outage produces refusals, never unchecked answers. API errors, timeouts, non-JSON output and schema mismatches all end as `supported=false` with the canonical refusal (`refusal_reason="model_unsupported"`), and the cause is logged as `stage=generate_error`.
+- **"The validator makes the LLM safe"** is tested offline with a stubbed client (`tests/test_pipeline.py`, "Claude path"):
+  - a grounded answer passes;
+  - an **invented number is refused by V5**;
+  - prose or non-JSON, a wrong schema, truncated JSON and API errors are refused;
+  - a citation outside the retrieved set is refused by V3;
+  - a refusal without the canonical prefix gets it added.
+
+  A further test checks the request's keyword arguments against the installed SDK's `messages.create` signature, because a stub would accept anything.
+
+## Extractive vs Claude
+
+Both modes run the same eval (`python run_pipeline.py --generator extractive` for the root artifacts; `python run_pipeline.py --generator claude --out-dir runs/claude` for [`runs/claude/`](runs/claude/)). Claude mode uses `claude-haiku-4-5-20251001`. Both run with threshold on, length `medium`, and the same gate and validator.
+
+| | Extractive (offline) | Claude (Haiku 4.5) |
+|---|---|---|
+| Refusal accuracy | 10/10 | 10/10 |
+| Validation pass rate | 1.0 | 1.0 |
+| Avg words (supported answers) | 24.2 | 22.2 |
+| Avg latency per question | ~1 ms | ~980 ms |
+| How q9/q10 are refused | coverage < 0.6 (`insufficient_coverage`) | model sets `supported=false` (`model_unsupported`) |
+
+Both modes refuse q7/q8 at the key-term gate, before any generation. Claude's refusals for the partial questions say what *is* covered, for example "The context only covers bank transfer withdrawals, which take 1 to 3 business days…". Its numbers still pass V5 because they come from the retrieved chunks.
+
+**Where the modes differ: a reworded question** (not in the eval set; run with `app.py`):
+
+| Question | Extractive | Claude |
+|---|---|---|
+| "How long until a password reset link stops working?" | refused: `insufficient_coverage` ("long, stop, work" aren't in any sentence) | ✅ "Reset links expire after 30 minutes. If the link has expired, the user must request a new reset…" citing `auth_password_reset.md` |
+| "When can I log in again after too many wrong passwords?" | refused: `low_retrieval_score` | refused: `low_retrieval_score` |
+
+The first row is the paraphrase gap in the extractive generator: retrieval found the right chunk, but word-overlap coverage can't see that "stops working" means "expire". Claude can, and the validator still checks its citation and its "30". The second row is the paraphrase gap in *retrieval*: "log in again" and "wrong passwords" barely overlap with "account locks … failed login attempts". Neither generator ever sees the right evidence, so both refuse. That fails safe, and it's the case hybrid or vector search (see Production path) would fix.
 
 ## Observability
 
