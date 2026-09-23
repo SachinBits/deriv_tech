@@ -208,12 +208,92 @@
   .seg button { flex: 1; border: none; background: transparent; border-radius: 7px; padding: 5px 4px; font-size: 13px; color: var(--muted); }
   .seg button[aria-checked="true"] { background: var(--surface-2); color: var(--text); font-weight: 500; }
   .seg button:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Uploads: menu items, drop overlay, toasts, ingestion card, drawer, note dialog */
+  .pop-item { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: transparent;
+    border-radius: 10px; padding: 9px 10px; text-align: left; font-size: 14px; }
+  .pop-item:hover, .pop-item:focus-visible { background: var(--surface-2); }
+  .pop-item svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
+  .kb-pill.clickable { cursor: pointer; }
+  .kb-pill.clickable:hover { color: var(--text); border-color: var(--muted); }
+  .drop-overlay { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; padding: 16px;
+    background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(2px); }
+  .drop-overlay.show { display: grid; }
+  .drop-box { width: min(560px, 100%); padding: 48px 24px; border: 2px dashed var(--accent); border-radius: 20px;
+    text-align: center; color: var(--text); font-size: 17px; background: var(--accent-soft); pointer-events: none; }
+  .drop-box svg { width: 34px; height: 34px; color: var(--accent); display: block; margin: 0 auto 12px; }
+  .toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: 150px; z-index: 40;
+    display: flex; flex-direction: column; gap: 8px; width: min(520px, calc(100% - 32px)); pointer-events: none; }
+  .toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+    border-radius: 12px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--danger);
+    box-shadow: var(--shadow); font-size: 13.5px; overflow-wrap: anywhere; }
+  .toast.ok { border-left-color: var(--accent); }
+  .toast span { flex: 1; }
+  .toast button { border: none; background: transparent; color: var(--muted); padding: 0 2px; }
+  .ingest { border-left: 3px solid var(--accent); }
+  .ingest-head { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 10px; overflow-wrap: anywhere; }
+  .ingest-head svg { width: 16px; height: 16px; color: var(--accent); flex: none; }
+  .stages { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 4px; font-size: 13.5px; }
+  .stages li { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  .stages li.active { color: var(--text); }
+  .stages li.done { color: var(--text); }
+  .stages .ico { width: 16px; height: 16px; display: grid; place-items: center; flex: none; }
+  .stages li.done .ico { color: var(--accent); }
+  .stages li.active .ico::before { content: ""; width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid var(--muted); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+  .stages li.pending .ico::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+  .stages .ms { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .stages li.active .ico::before { animation: none; } }
+  .ingest-summary { font-size: 13.5px; color: var(--muted); margin: 8px 0 4px; }
+  .suggest-label { font-size: 12.5px; color: var(--muted); margin: 10px 0 6px; }
+  .chip.verified { border-color: var(--accent); }
+  .chip.verified:hover { background: var(--accent-soft); }
+  .chip.verified .v { color: var(--accent); font-weight: 600; white-space: nowrap; }
+  .chip.cite.upload { color: var(--accent); border-color: var(--accent); }
+  .chip.cite .updot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .scope-note { font-size: 12.5px; color: var(--muted); }
+  .opt-chip.scope { background: var(--surface-2); color: var(--text); }
+
+  .drawer-backdrop { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.35); display: none; }
+  .drawer-backdrop.open { display: block; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 31; width: min(420px, 100%); background: var(--bg);
+    border-left: 1px solid var(--border); box-shadow: var(--shadow); transform: translateX(100%);
+    transition: transform .2s ease; display: flex; flex-direction: column; visibility: hidden; }
+  .drawer.open { transform: none; visibility: visible; }
+  .drawer-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--border); }
+  .drawer-head h2 { font-size: 15px; margin: 0; flex: 1; }
+  .drawer-body { overflow-y: auto; padding: 8px 12px 24px; flex: 1; }
+  .drawer-actions { display: flex; gap: 8px; padding: 8px 4px 4px; flex-wrap: wrap; }
+  .doc-row { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-top: 8px; background: var(--surface); }
+  .doc-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .doc-top input { width: 16px; height: 16px; accent-color: var(--accent); flex: none; margin: 0; }
+  .doc-name { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+  .badge { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); flex: none; }
+  .badge.upload { background: var(--accent-soft); color: var(--accent); }
+  .badge.new { background: var(--accent); color: var(--bg); }
+  .doc-meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 12.5px; color: var(--muted); flex-wrap: wrap; }
+  .link-btn { border: none; background: transparent; color: var(--accent); padding: 0; font-size: 12.5px; }
+  .link-btn.danger { color: var(--danger); }
+  .doc-chunks .src { background: var(--bg); }
+
+  dialog.note { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text);
+    padding: 0; width: min(560px, calc(100% - 32px)); box-shadow: var(--shadow); }
+  dialog.note::backdrop { background: rgba(0,0,0,.45); }
+  .note form { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+  .note h2 { font-size: 16px; margin: 0; }
+  .note input, .note textarea { width: 100%; border: 1px solid var(--border); background: var(--bg); border-radius: 10px;
+    padding: 8px 10px; resize: vertical; }
+  .note textarea { min-height: 200px; }
+  .note .row { display: flex; justify-content: flex-end; gap: 8px; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 </style>
 </head>
 <body>
 <header>
   <h1>Support Assistant</h1>
-  <span class="kb-pill" id="kbPill" title="Knowledge base"><span class="dot" id="kbDot"></span><span id="kbText">Loading…</span></span>
+  <button type="button" class="kb-pill" id="kbPill" title="Knowledge base" aria-label="Knowledge base" disabled><span class="dot" id="kbDot"></span><span id="kbText">Loading…</span></button>
   <span class="spacer"></span>
   <button class="icon-btn" id="themeBtn" aria-label="Toggle colour theme" title="Toggle theme">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -232,6 +312,17 @@
 <div class="composer-wrap">
   <div class="composer-inner">
     <div class="popover" id="popover" role="menu" aria-label="Answer options">
+      <div class="pop-section" id="uploadMenu" hidden>
+        <button type="button" class="pop-item" role="menuitem" id="addDocsBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+          Add documents
+        </button>
+        <button type="button" class="pop-item" role="menuitem" id="newNoteBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          New note
+        </button>
+        <input type="file" id="fileInput" accept=".md,.txt,.pdf" multiple hidden>
+      </div>
       <div class="pop-section">
         <div class="pop-row">
           <div>
@@ -280,6 +371,46 @@
   </div>
 </div>
 
+<div class="drop-overlay" id="dropOverlay" aria-hidden="true">
+  <div class="drop-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+    Drop .md, .txt or .pdf to add to the knowledge base
+  </div>
+</div>
+<div class="toasts" id="toasts" aria-live="assertive"></div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+  <div class="drawer-head">
+    <h2 id="drawerTitle">Knowledge base</h2>
+    <button type="button" class="icon-btn" id="drawerClose" aria-label="Close knowledge base">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-actions">
+      <button type="button" class="btn" id="drawerAdd">Add documents</button>
+      <button type="button" class="btn" id="drawerNote">New note</button>
+      <button type="button" class="btn" id="drawerClearScope">Search all docs</button>
+    </div>
+    <div id="docList"></div>
+  </div>
+</aside>
+
+<dialog class="note" id="noteDialog" aria-labelledby="noteTitle">
+  <form method="dialog" id="noteForm">
+    <h2 id="noteTitle">New note</h2>
+    <label class="sr-only" for="noteName">Note name</label>
+    <input id="noteName" maxlength="80" placeholder="Note name, e.g. pricing faq" required>
+    <label class="sr-only" for="noteText">Note text</label>
+    <textarea id="noteText" placeholder="Paste or write text. Markdown headings (## Section) improve chunking." required></textarea>
+    <div class="row">
+      <button type="button" class="btn" id="noteCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save to knowledge base</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 (() => {
   "use strict";
@@ -311,6 +442,8 @@
   let cfg = null;
   let busy = false;
   const state = { thresholdEnabled: true, threshold: 0.10, length: "medium", generator: "extractive" };
+  let scope = [];  // doc_ids ticked in the knowledge-base drawer (not persisted: uploads can disappear)
+  const kb = { uploadEnabled: false, limits: null, docs: [], recent: {} };
 
   // ---------- theme ----------
   const savedTheme = storage.get(THEME_KEY);
@@ -344,13 +477,17 @@
     } catch (e) { /* ignore corrupt storage */ }
     if (state.generator === "claude" && !(cfg && cfg.generators.claude)) state.generator = "extractive";
   }
-  function requestOptions() {
+  function requestOptions(docIds) {
     return {
       confidence_threshold_enabled: state.thresholdEnabled,
       confidence_threshold: Math.round(state.threshold * 100) / 100,
       length: state.length === "off" ? null : state.length,
       generator: state.generator,
+      doc_ids: docIds && docIds.length ? docIds : null,
     };
+  }
+  function scopeLabel(docIds) {
+    return docIds.length === 1 ? docIds[0] : docIds.length + " docs";
   }
 
   function renderOptions() {
@@ -373,9 +510,9 @@
     // Active option chips inside the composer
     const chips = $("optChips");
     chips.replaceChildren();
-    const addChip = (label, onRemove) => {
+    const addChip = (label, onRemove, extraClass) => {
       const c = document.createElement("span");
-      c.className = "opt-chip";
+      c.className = "opt-chip" + (extraClass ? " " + extraClass : "");
       const t = document.createElement("span");
       t.textContent = label;
       const x = document.createElement("button");
@@ -389,6 +526,7 @@
     if (state.thresholdEnabled) addChip("Threshold " + state.threshold.toFixed(2), () => { state.thresholdEnabled = false; });
     if (state.length !== "off") addChip(state.length[0].toUpperCase() + state.length.slice(1), () => { state.length = "off"; });
     if (state.generator === "claude") addChip("Claude", () => { state.generator = "extractive"; });
+    if (scope.length) addChip("Searching: " + scopeLabel(scope), () => { scope = []; renderDrawer(); }, "scope");
   }
 
   // ---------- popover ----------
@@ -507,6 +645,8 @@
     const top = el("div", "card-top");
     top.append(el("span", "status " + (grounded ? "ok" : "warn"), grounded ? "Grounded ✓" : "Not in docs"));
     if (!grounded && r.refusal_reason) top.append(el("span", "reason", REASONS[r.refusal_reason] || r.refusal_reason));
+    const usedScope = r.options_applied.doc_ids;
+    if (usedScope && usedScope.length) top.append(el("span", "scope-note", "Scope: " + scopeLabel(usedScope)));
     const thr = r.options_applied.confidence_threshold;
     const conf = el("div", "conf");
     conf.append(el("span", "", "Confidence"));
@@ -544,11 +684,13 @@
     if (r.citations.length) {
       const chips = el("div", "chips");
       for (const doc of r.citations) {
-        const chip = el("button", "chip cite");
+        const uploaded = (r.citation_sources || {})[doc] === "upload";
+        const chip = el("button", "chip cite" + (uploaded ? " upload" : ""));
         chip.type = "button";
         chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
         chip.append(document.createTextNode(doc));
-        chip.setAttribute("aria-label", "Show source " + doc);
+        if (uploaded) { const dot = el("span", "updot"); dot.title = "Uploaded document"; chip.append(dot); }
+        chip.setAttribute("aria-label", "Show source " + doc + (uploaded ? " (uploaded)" : ""));
         chip.addEventListener("click", () => {
           sources.open = true;
           const targets = (rows[doc] || []).filter((x) => x.cited);
@@ -601,7 +743,8 @@
   }
 
   // ---------- ask ----------
-  async function ask(question) {
+  async function ask(question, docIds) {
+    if (docIds === undefined) docIds = scope.slice();
     $("empty").hidden = true;
     const thread = $("thread");
     thread.append(el("div", "user-msg", question));
@@ -617,7 +760,7 @@
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, options: requestOptions() }),
+        body: JSON.stringify({ question, options: requestOptions(docIds) }),
       });
       if (!res.ok) {
         let msg = "Request failed (" + res.status + ")";
@@ -630,7 +773,7 @@
       card.append(el("span", "", err.message || "Something went wrong."));
       const retry = el("button", "btn", "Retry");
       retry.type = "button";
-      retry.addEventListener("click", () => { slot.previousElementSibling.remove(); slot.remove(); ask(question); });
+      retry.addEventListener("click", () => { slot.previousElementSibling.remove(); slot.remove(); ask(question, docIds); });
       card.append(retry);
       slot.replaceChildren(card);
     } finally {
@@ -638,6 +781,271 @@
       scrollToEnd();
     }
   }
+
+
+  // ---------- toasts ----------
+  function toast(message, ok) {
+    const t = el("div", "toast" + (ok ? " ok" : ""));
+    t.setAttribute("role", ok ? "status" : "alert");
+    const x = el("button", "", "✕");
+    x.type = "button";
+    x.setAttribute("aria-label", "Dismiss");
+    x.addEventListener("click", () => t.remove());
+    t.append(el("span", "", message), x);
+    $("toasts").append(t);
+    setTimeout(() => t.remove(), 6000);
+  }
+  async function errorText(res) {
+    try {
+      const j = await res.json();
+      if (typeof j.detail === "string") return j.detail;
+      if (Array.isArray(j.detail)) return j.detail.map((d) => d.msg).join("; ");
+    } catch (e) {}
+    return "Request failed (" + res.status + ")";
+  }
+
+  // ---------- knowledge base: docs, drawer ----------
+  function fmtChars(n) { return n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, "") + "k" : String(n); }
+  function renderKbPill() {
+    const chunks = kb.docs.reduce((a, d) => a + d.chunks, 0);
+    $("kbText").textContent = kb.docs.length + " docs · " + chunks + " chunks";
+  }
+  async function refreshDocs() {
+    if (!kb.uploadEnabled) return;
+    try {
+      const res = await fetch("/api/docs");
+      if (!res.ok) throw new Error(await errorText(res));
+      kb.docs = (await res.json()).docs;
+      const known = new Set(kb.docs.map((d) => d.doc_id));
+      const before = scope.length;
+      scope = scope.filter((d) => known.has(d));
+      if (scope.length !== before) renderOptions();
+      renderKbPill();
+      renderDrawer();
+    } catch (e) { toast("Couldn't load documents: " + e.message); }
+  }
+  function isNew(docId) { return (kb.recent[docId] || 0) > Date.now() - 60000; }
+
+  function renderDrawer() {
+    const list = $("docList");
+    list.replaceChildren();
+    $("drawerClearScope").hidden = !scope.length;
+    for (const d of kb.docs) {
+      const row = el("div", "doc-row");
+      const top = el("div", "doc-top");
+      const cb = el("input");
+      cb.type = "checkbox";
+      cb.checked = scope.includes(d.doc_id);
+      cb.setAttribute("aria-label", "Search only in " + d.doc_id);
+      cb.addEventListener("change", () => {
+        scope = cb.checked ? [...scope, d.doc_id] : scope.filter((x) => x !== d.doc_id);
+        renderOptions(); renderDrawer();
+      });
+      const name = el("span", "doc-name", d.doc_id);
+      name.title = d.doc_id;
+      top.append(cb, name);
+      if (isNew(d.doc_id)) top.append(el("span", "badge new", "New"));
+      top.append(el("span", "badge" + (d.source === "upload" ? " upload" : ""), d.source === "upload" ? "Uploaded" : "Base"));
+      const meta = el("div", "doc-meta");
+      meta.append(el("span", "", d.chunks + " chunks · " + fmtChars(d.chars) + " chars"));
+      const view = el("button", "link-btn", "View chunks");
+      view.type = "button";
+      view.setAttribute("aria-expanded", "false");
+      const chunkBox = el("div", "doc-chunks");
+      chunkBox.hidden = true;
+      view.addEventListener("click", async () => {
+        if (!chunkBox.hidden) { chunkBox.hidden = true; view.setAttribute("aria-expanded", "false"); view.textContent = "View chunks"; return; }
+        try {
+          const res = await fetch("/api/docs/" + encodeURIComponent(d.doc_id) + "/chunks");
+          if (!res.ok) throw new Error(await errorText(res));
+          chunkBox.replaceChildren(...(await res.json()).chunks.map(chunkRow));
+          chunkBox.hidden = false; view.setAttribute("aria-expanded", "true"); view.textContent = "Hide chunks";
+        } catch (e) { toast("Couldn't load chunks: " + e.message); }
+      });
+      meta.append(view);
+      if (d.source === "upload") {
+        const del = el("button", "link-btn danger", "Delete");
+        del.type = "button";
+        let armed = false;
+        del.addEventListener("click", async () => {
+          if (!armed) {  // inline two-step confirmation
+            armed = true; del.textContent = "Confirm delete?";
+            setTimeout(() => { armed = false; del.textContent = "Delete"; }, 4000);
+            return;
+          }
+          try {
+            const res = await fetch("/api/docs/" + encodeURIComponent(d.doc_id), { method: "DELETE" });
+            if (!res.ok) throw new Error(await errorText(res));
+            toast("Deleted " + d.doc_id, true);
+            await refreshDocs();
+          } catch (e) { toast("Delete failed: " + e.message); }
+        });
+        meta.append(del);
+      }
+      row.append(top, meta, chunkBox);
+      list.append(row);
+    }
+  }
+  function chunkRow(c) {
+    const row = el("div", "src");
+    const head = el("div", "src-head");
+    head.append(el("span", "id", c.chunk_id + (c.heading ? " · " + c.heading : "")));
+    row.append(head, el("p", "src-text", c.text));
+    return row;
+  }
+  let drawerReturnFocus = null;
+  function openDrawer() {
+    drawerReturnFocus = document.activeElement;
+    $("drawer").classList.add("open"); $("drawerBackdrop").classList.add("open");
+    renderDrawer(); refreshDocs();
+    $("drawerClose").focus();
+  }
+  function closeDrawer() {
+    if (!$("drawer").classList.contains("open")) return;
+    $("drawer").classList.remove("open"); $("drawerBackdrop").classList.remove("open");
+    if (drawerReturnFocus) drawerReturnFocus.focus();
+  }
+  $("kbPill").addEventListener("click", () => { if (kb.uploadEnabled) openDrawer(); });
+  $("drawerClose").addEventListener("click", closeDrawer);
+  $("drawerBackdrop").addEventListener("click", closeDrawer);
+  $("drawerClearScope").addEventListener("click", () => { scope = []; renderOptions(); renderDrawer(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+  // ---------- uploads ----------
+  const STAGES = [["read_ms", "Reading"], ["chunk_ms", "Chunking"], ["index_ms", "Indexing"], ["verify_ms", "Verifying questions"]];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function precheck(file) {
+    const ext = (file.name.match(/\.[^.]+$/) || [""])[0].toLowerCase();
+    const lim = kb.limits;
+    if (lim && !lim.extensions.includes(ext)) return "Unsupported file type (" + (ext || "none") + "): use .md, .txt or .pdf";
+    if (lim && file.size > lim.max_file_bytes) return file.name + " is larger than 2 MB";
+    if (!file.size) return file.name + " is empty";
+    return null;
+  }
+
+  function uploadFiles(fileList) {
+    const files = [...fileList];
+    if (!files.length) return;
+    closePopover(false);
+    for (const f of files) {
+      const problem = precheck(f);
+      if (problem) { toast(problem); continue; }
+      uploadOne(f);
+    }
+  }
+
+  async function uploadOne(file) {
+    $("empty").hidden = true;
+    const card = el("article", "card ingest");
+    card.setAttribute("aria-label", "Adding " + file.name);
+    const head = el("div", "ingest-head");
+    head.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+    head.append(document.createTextNode(file.name));
+    const stages = el("ul", "stages");
+    const items = STAGES.map(([, label]) => {
+      const li = el("li", "pending");
+      li.append(el("span", "ico"), el("span", "", label), el("span", "ms"));
+      stages.append(li);
+      return li;
+    });
+    card.append(head, stages);
+    $("thread").append(card);
+    scrollToEnd();
+
+    // Show progress while the single request runs; real per-stage times replace it on completion.
+    let active = 0;
+    items[0].className = "active";
+    const ticker = setInterval(() => {
+      if (active < items.length - 1) { items[active].className = "pending"; active++; items[active].className = "active"; }
+    }, 350);
+
+    let body;
+    try {
+      const fd = new FormData();
+      fd.append("files", file, file.name);
+      const res = await fetch("/api/docs", { method: "POST", body: fd });
+      if (!res.ok) throw new Error(await errorText(res));
+      body = await res.json();
+    } catch (e) {
+      clearInterval(ticker);
+      items.forEach((li) => { li.className = "pending"; });
+      card.classList.replace("ingest", "error-card");
+      card.append(el("p", "ingest-summary", "Not added: " + e.message));
+      toast(e.message);
+      return;
+    }
+    clearInterval(ticker);
+    const f = body.files[0];
+    for (let i = 0; i < items.length; i++) {  // replay stages with the server-measured times
+      items[i].className = "done";
+      items[i].querySelector(".ico").textContent = "✓";
+      items[i].querySelector(".ms").textContent = f.stages[STAGES[i][0]].toFixed(1) + " ms";
+      await sleep(120);
+    }
+    kb.recent[f.doc_id] = Date.now();
+    setTimeout(renderDrawer, 60500);
+    card.setAttribute("aria-label", "Added " + f.doc_id);
+    card.append(el("div", "ingest-summary",
+      f.chunks_created + " chunks · " + fmtChars(f.chars) + " chars · " + Math.round(f.ingest_ms) + " ms" +
+      (f.doc_id !== file.name ? " · saved as " + f.doc_id : "")));
+
+    const how = el("details");
+    how.append(el("summary", "", "How it was chunked"));
+    f.preview_chunks.forEach((c) => how.append(chunkRow(c)));
+    if (f.chunks_created > f.preview_chunks.length)
+      how.append(el("p", "scope-note", "… and " + (f.chunks_created - f.preview_chunks.length) + " more"));
+    card.append(how);
+
+    if (f.suggested_questions.length) {
+      card.append(el("div", "suggest-label", "Suggested questions, each checked against the pipeline before being shown:"));
+      const chips = el("div", "chips");
+      for (const q of f.suggested_questions) {
+        const chip = el("button", "chip verified");
+        chip.type = "button";
+        chip.append(el("span", "v", "✓ verified"), el("span", "", q));
+        chip.setAttribute("aria-label", "Ask: " + q + " (verified, searches " + f.doc_id + ")");
+        chip.addEventListener("click", () => ask(q, [f.doc_id]));
+        chips.append(chip);
+      }
+      card.append(chips);
+    } else {
+      card.append(el("div", "suggest-label", "No suggested question passed verification. Try asking about a specific fact in the document."));
+    }
+    scrollToEnd();
+    refreshDocs();
+  }
+
+  $("addDocsBtn").addEventListener("click", () => $("fileInput").click());
+  $("drawerAdd").addEventListener("click", () => $("fileInput").click());
+  $("fileInput").addEventListener("change", (e) => { uploadFiles(e.target.files); e.target.value = ""; });
+
+  // Drag and drop anywhere on the page
+  let dragDepth = 0;
+  const hasFiles = (e) => kb.uploadEnabled && e.dataTransfer && [...e.dataTransfer.types].includes("Files");
+  window.addEventListener("dragenter", (e) => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; $("dropOverlay").classList.add("show"); });
+  window.addEventListener("dragover", (e) => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener("dragleave", (e) => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("dropOverlay").classList.remove("show"); });
+  window.addEventListener("drop", (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); dragDepth = 0; $("dropOverlay").classList.remove("show");
+    uploadFiles(e.dataTransfer.files);
+  });
+
+  // New note → saved as a .md upload
+  const noteDialog = $("noteDialog");
+  function openNote() { closePopover(false); closeDrawer(); noteDialog.showModal(); $("noteName").focus(); }
+  $("newNoteBtn").addEventListener("click", openNote);
+  $("drawerNote").addEventListener("click", openNote);
+  $("noteCancel").addEventListener("click", () => noteDialog.close());
+  $("noteForm").addEventListener("submit", (e) => {
+    const name = $("noteName").value.trim(), text = $("noteText").value;
+    if (!name || !text.trim()) { e.preventDefault(); return; }
+    const slug = name.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^[_-]+|[_-]+$/g, "") || "note";
+    const body = /^\s*#/.test(text) ? text : "# " + name + "\n\n" + text;
+    uploadFiles([new File([body], slug + ".md", { type: "text/markdown" })]);
+    $("noteName").value = ""; $("noteText").value = "";
+  });
 
   // ---------- boot ----------
   async function boot() {
@@ -654,6 +1062,15 @@
         b.type = "button";
         b.addEventListener("click", () => ask(q));
         sug.append(b);
+      }
+      kb.uploadEnabled = !!cfg.upload_enabled;
+      kb.limits = cfg.upload_limits || null;
+      if (kb.uploadEnabled) {
+        $("uploadMenu").hidden = false;
+        $("kbPill").disabled = false;
+        $("kbPill").classList.add("clickable");
+        $("kbPill").setAttribute("aria-label", "Open knowledge base: " + $("kbText").textContent);
+        refreshDocs();
       }
       $("thrSlider").min = cfg.threshold_range[0];
       $("thrSlider").max = cfg.threshold_range[1];

@@ -23,7 +23,7 @@ def answer_question(question: str, index: Index, generator=None,
     generator = generator or get_generator(options.generator, index.vectorizer)
 
     # 1. Retrieve
-    hits = index.search(question, k)
+    hits = index.search(question, k, doc_ids=options.doc_ids)
     top_score = hits[0]["score"] if hits else 0.0
 
     # 2. Gate (threshold is optional; the key-term check always runs)

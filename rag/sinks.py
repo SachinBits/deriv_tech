@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections import defaultdict
 
@@ -33,28 +34,37 @@ class SupabaseSink:
         # never as `Authorization: Bearer`.
         return {"apikey": self.key, "Content-Type": "application/json", "Prefer": "return=minimal"}
 
-    def _post(self, table: str, rows: list[dict], query: str = "", prefer: str | None = None) -> bool:
-        if not self.enabled or not rows:
-            return False
+    def _send(self, method: str, table: str, query: str = "", body: list[dict] | None = None,
+              prefer: str | None = None, rows: int = 0) -> bool:
         headers = self._headers()
         if prefer:
             headers["Prefer"] = f"{headers['Prefer']},{prefer}"
-        ok = True
-        for start in range(0, len(rows), BATCH_SIZE):
-            batch = rows[start:start + BATCH_SIZE]
-            req = urllib.request.Request(f"{self.url}/rest/v1/{table}{query}", method="POST",
-                                         data=json.dumps(batch, default=str).encode(), headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
-                    log("sink", table=table, rows=len(batch), ok=True, status=resp.status)
-            except urllib.error.HTTPError as e:
-                body = e.read().decode(errors="replace")[:300]
-                log("sink", table=table, rows=len(batch), ok=False, status=e.code, error=body)
-                ok = False
-            except (urllib.error.URLError, TimeoutError, OSError) as e:
-                log("sink", table=table, rows=len(batch), ok=False, error=f"{type(e).__name__}: {e}")
-                ok = False
-        return ok
+        data = json.dumps(body, default=str).encode() if body is not None else None
+        req = urllib.request.Request(f"{self.url}/rest/v1/{table}{query}", method=method,
+                                     data=data, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
+                log("sink", method=method, table=table, rows=rows, ok=True, status=resp.status)
+                return True
+        except urllib.error.HTTPError as e:
+            error = e.read().decode(errors="replace")[:300]
+            log("sink", method=method, table=table, rows=rows, ok=False, status=e.code, error=error)
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            log("sink", method=method, table=table, rows=rows, ok=False, error=f"{type(e).__name__}: {e}")
+        return False
+
+    def _post(self, table: str, rows: list[dict], query: str = "", prefer: str | None = None) -> bool:
+        if not self.enabled or not rows:
+            return False
+        results = [self._send("POST", table, query, rows[i:i + BATCH_SIZE], prefer,
+                              rows=len(rows[i:i + BATCH_SIZE]))
+                   for i in range(0, len(rows), BATCH_SIZE)]
+        return all(results)
+
+    def delete_chunks(self, doc_id: str) -> bool:
+        if not self.enabled:
+            return False
+        return self._send("DELETE", "chunks", f"?doc_id=eq.{urllib.parse.quote(doc_id, safe='')}")
 
     @staticmethod
     def _query_row(record: dict, client: str) -> dict:

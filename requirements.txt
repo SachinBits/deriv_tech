@@ -8,6 +8,8 @@ fastapi==0.141.1
 uvicorn==0.53.0
 pydantic==2.13.5
 httpx==0.28.1
+python-multipart==0.0.32   # multipart uploads (POST /api/docs)
+pypdf==6.19.0              # PDF text extraction for uploads (pure Python)
 
 # Optional: Claude generator (imported lazily; offline mode works without it)
 anthropic==1.8.0

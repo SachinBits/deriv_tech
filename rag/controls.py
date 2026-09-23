@@ -23,15 +23,20 @@ class AskOptions(BaseModel):
     confidence_threshold: float = Field(config.MIN_SCORE, ge=0.0, le=0.5)
     length: Optional[LengthMode] = "medium"  # None = off
     generator: Literal["auto", "extractive", "claude"] = "auto"
+    # Scoped search: restrict retrieval to these doc_ids (None = whole knowledge base).
+    doc_ids: Optional[list[str]] = Field(None, max_length=50)
 
     def applied(self) -> dict:
-        return {
+        applied = {
             "confidence_threshold": {
                 "enabled": self.confidence_threshold_enabled,
                 "value": self.confidence_threshold,
             },
             "length": self.length,
         }
+        if self.doc_ids is not None:  # only present when scoped, so eval artifacts are unchanged
+            applied["doc_ids"] = list(self.doc_ids)
+        return applied
 
 
 def word_count(text: str) -> int:

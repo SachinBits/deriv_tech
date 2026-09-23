@@ -20,8 +20,8 @@ questions.json        eval set: [{id, question, expected_behavior?, expected_doc
 prompts/answer.txt    Claude prompt template ({question}, {context}, {length_instruction})
 rag/config.py         constants and calibrated thresholds
 rag/obs.py            JSONL stage logging → logs/pipeline.jsonl
-rag/ingest.py         load_docs(), chunk()  (split on headings, pack to ≤400 chars)
-rag/retrieve.py       Index.build() / Index.search()
+rag/ingest.py         load_docs(), chunk()  (.md/.txt/.pdf; split on headings, pack to ≤400 chars)
+rag/retrieve.py       Index.build() / Index.search(question, k, doc_ids=None)
 rag/gate.py           evidence_gate(): confidence threshold (optional) + key-term check
 rag/prompt.py         build_prompt()
 rag/generate.py       ExtractiveGenerator, ClaudeGenerator, get_generator()
@@ -29,10 +29,12 @@ rag/validate.py       validate(): V1–V6
 rag/controls.py       AskOptions, LENGTH_PRESETS, apply_length()
 rag/evalset.py        load_questions() (a missing file is tolerated), expected_supported()
 rag/pipeline.py       answer_question(): the orchestrator
+rag/kb.py             server knowledge base: docs/ + uploads/, thread-safe rebuild, upload checks
+rag/suggest.py        self-verified suggested questions for uploaded docs
 rag/sinks.py          optional Supabase sink (query_logs, eval_runs, chunks)
 run_pipeline.py       batch eval → retrieval_results.json, answers.json, validation_report.json
 app.py                one-question CLI
-server.py             FastAPI: /api/config, /api/ask (+ /ask alias), /api/health, UI at /
+server.py             FastAPI: /api/config, /api/ask (+ /ask alias), /api/health, /api/docs*, UI at /
 web/index.html        single-file chat UI (vanilla JS, no build step)
 tests/test_pipeline.py
 ```
@@ -220,10 +222,44 @@ If `SUPABASE_URL` and a key (`SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_KEY`) ar
 | `app.py` | `query_logs` | `client="cli"` |
 | `run_pipeline.py` | `query_logs`, `eval_runs` | default-run answers (`client="eval"`) and the summary incl. ablation |
 | `server.py` startup, `run_pipeline.py` | `chunks` | upsert on `chunk_id` with `content_hash`; `embedding`/`fts` are left to the DB |
+| `POST /api/docs` / `DELETE /api/docs/{id}` | `chunks` | upsert the new doc's chunks / `DELETE chunks?doc_id=eq.<id>` |
 
 - **Headers:** `apikey: <key>`, `Content-Type: application/json` and `Prefer: return=minimal`. There is **no** `Authorization: Bearer` header, because new `sb_secret_…` keys are not JWTs. The chunk upsert adds `resolution=merge-duplicates`.
 - **Failures:** writes are best-effort with a 5 s timeout. A failure is logged as `stage=sink` and never changes an answer.
 - **Loading `.env`:** it isn't auto-loaded; see [Environment variables](#environment-variables). Sourcing it also exports `ANTHROPIC_API_KEY`, which makes `--generator auto` use Claude.
+
+## Try your own docs (local)
+
+Run `python server.py` and add your own `.md`, `.txt` or `.pdf` files. You can drag them anywhere onto the page, use **+ → Add documents**, or paste text with **+ → New note**. Each file gets an ingestion card that steps through **Reading → Chunking → Indexing → Verifying questions** with server-measured times. It also shows how the file was chunked and up to three **✓ verified** suggested questions. Clicking one asks it, scoped to that file.
+
+> _Screenshot placeholder: add `screenshot-upload.png` (ingestion card with verified chips, and an answer citing the uploaded file)._
+
+- **Knowledge base drawer** (click the "N docs · M chunks" pill):
+  - lists every doc with a *Base* / *Uploaded* / *New* badge and its chunk count;
+  - *View chunks*;
+  - delete, for uploads only, with an inline confirmation;
+  - a checkbox that scopes search to the ticked docs, shown as a "Searching: …" chip in the composer.
+- **Citations:** an answer drawn from an upload shows its citation chip in the accent colour with a dot, so you can see at a glance whether it came from your file or the base docs.
+- **Grounding is unchanged:** uploads go through the same gate, prompt, generator and validator. Scoping only filters retrieval (`Index.search(..., doc_ids=[...])`).
+- **Limits:**
+  - `.md`, `.txt` and `.pdf` only (PDF text is extracted page by page with pypdf; pages without text are skipped);
+  - ≤ 2 MB per file, ≤ 5 files per request, ≤ 20 uploaded docs;
+  - filenames are sanitised to `[a-z0-9_-]` plus the extension, so path traversal is impossible;
+  - a name that clashes with a base doc gets 409;
+  - a file with no extractable text gets 422.
+- **Storage and rebuilds:** files go to `uploads/`, which is git-ignored. The server rebuilds the whole index on each change and swaps it in under a lock, so in-flight requests keep the old index.
+- **The eval is isolated:** `run_pipeline.py` and the committed artifacts read `docs/` only. A test runs the eval with and without a file in `uploads/` and asserts identical output.
+
+**How suggested questions are verified.**
+1. Candidates:
+   - With Claude available, Claude proposes 5 questions answerable only from the file.
+   - Otherwise, deterministic templates turn factual sentences that contain numbers into questions ("The Starter plan costs $29" → "How much does the Starter plan cost?") and add heading-based questions.
+2. **Each candidate is run through the full pipeline, scoped to that file.**
+3. Only questions that come back `supported=true` with `validation_passed` and a citation of that file are kept, up to 3.
+
+So the UI never suggests a question the system would refuse. The upload is logged as `stage=upload` with `suggestions_kept/tried` (e.g. 3/7 for the example above).
+
+**Why upload is disabled on Vercel:** serverless instances are stateless and short-lived, so a file saved on one instance is gone on the next request, which could land on another instance. With `VERCEL` set, every `/api/docs` endpoint returns 403, `upload_enabled` is false, and the UI hides all upload entry points. The production path is to persist uploads to the Supabase `chunks` table and retrieve from there behind the same `Index.search()` interface. The sink already writes uploaded chunks there when configured; retrieving from it is the remaining step.
 
 ## Limitations
 
@@ -231,6 +267,7 @@ If `SUPABASE_URL` and a key (`SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_KEY`) ar
 - Thresholds are tuned on 10 questions, which is too few to be a reliable estimate.
 - V5 only catches fabricated numbers. A wrong but number-free claim passes the validator if its citations are valid.
 - Extractive answers are verbatim sentences: grounded, but sometimes stilted or missing context from the neighbouring sentence.
+- Uploads rebuild the whole TF-IDF index, and IDF shifts with each new doc. Fine for dozens of docs, not thousands. Deterministic suggestion templates only cover "X is/costs/takes …" style facts; other docs may get fewer (or no) suggestions, but never unverified ones.
 - The lexical key-term gate may refuse valid paraphrased questions on new corpora (e.g. an acronym that the docs spell out). This fails safe: the result is a refusal, never a fabrication.
 
 ## Production path

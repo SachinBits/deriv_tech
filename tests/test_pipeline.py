@@ -151,13 +151,17 @@ def test_expected_behavior_normalised():
 # ---------- add-on: API ----------
 
 @pytest.fixture(scope="module")
-def client():
+def client(tmp_path_factory):
     from fastapi.testclient import TestClient
 
     import server
 
+    mp = pytest.MonkeyPatch()
+    mp.setenv("RAG_UPLOADS_DIR", str(tmp_path_factory.mktemp("uploads")))
+    mp.delenv("VERCEL", raising=False)
     with TestClient(server.app) as c:
         yield c
+    mp.undo()
 
 
 def test_api_config(client):
@@ -395,3 +399,189 @@ def test_claude_call_matches_installed_sdk_signature(index, grounded_case):
     ask_claude(q, index, gen)
     params = inspect.signature(anthropic.Anthropic(api_key="test").messages.create).parameters
     assert set(gen._client.messages.calls[0]) <= set(params)
+
+
+# ---------- local document upload ----------
+
+UPLOAD_MD = b"""# Pricing FAQ
+
+## Plans
+
+The Starter plan costs $29 per month. The Growth plan costs $99 per month and includes 5 seats.
+
+## Seats
+
+Extra seats cost $12 per seat per month.
+"""
+
+
+def make_text_pdf(text: str) -> bytes:
+    """A minimal one-page PDF with a text layer (correct xref offsets)."""
+    stream = f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode()
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out, offsets = bytearray(b"%PDF-1.4\n"), []
+    for i, body in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f"{i} 0 obj\n".encode() + body + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
+    out += b"".join(f"{o:010d} 00000 n \n".encode() for o in offsets)
+    out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    return bytes(out)
+
+
+@pytest.fixture
+def upclient(tmp_path, monkeypatch):
+    """A server whose uploads dir is a fresh temp dir."""
+    from fastapi.testclient import TestClient
+
+    import server
+
+    uploads = tmp_path / "uploads"
+    monkeypatch.setenv("RAG_UPLOADS_DIR", str(uploads))
+    monkeypatch.delenv("VERCEL", raising=False)
+    with TestClient(server.app) as c:
+        c.uploads = uploads
+        yield c
+
+
+def upload(c, name, data, mime="text/markdown"):
+    return c.post("/api/docs", files=[("files", (name, data, mime))])
+
+
+def test_upload_md_creates_chunks_and_is_answerable(upclient):
+    r = upload(upclient, "pricing_faq.md", UPLOAD_MD)
+    assert r.status_code == 200
+    f = r.json()["files"][0]
+    assert f["doc_id"] == "pricing_faq.md" and f["source"] == "upload"
+    assert f["chunks_created"] >= 1 and f["headings"] == ["Plans", "Seats"]
+    assert set(f["stages"]) == {"read_ms", "chunk_ms", "index_ms", "verify_ms"}
+    for scoped in (None, ["pricing_faq.md"]):
+        a = upclient.post("/api/ask", json={"question": "How much does the Growth plan cost per month?",
+                                            "options": {"generator": "extractive", "doc_ids": scoped}}).json()
+        assert a["supported"] is True and "pricing_faq.md" in a["citations"]
+        assert a["citation_sources"]["pricing_faq.md"] == "upload"
+    docs = {d["doc_id"]: d for d in upclient.get("/api/docs").json()["docs"]}
+    assert docs["pricing_faq.md"]["source"] == "upload" and docs["withdrawals.md"]["source"] == "base"
+    chunks = upclient.get("/api/docs/pricing_faq.md/chunks").json()["chunks"]
+    assert len(chunks) == f["chunks_created"]
+
+
+def test_upload_pdf(upclient):
+    r = upload(upclient, "Refund Policy.pdf", make_text_pdf("Refunds are issued within 14 days."), "application/pdf")
+    assert r.status_code == 200
+    f = r.json()["files"][0]
+    assert f["doc_id"] == "refund_policy.pdf" and f["chars"] > 0
+    assert "14 days" in f["preview_chunks"][0]["text"]
+
+
+def test_upload_pdf_without_text_is_422(upclient):
+    import io
+
+    from pypdf import PdfWriter
+
+    w, buf = PdfWriter(), io.BytesIO()
+    w.add_blank_page(width=612, height=792)
+    w.write(buf)
+    assert upload(upclient, "scan.pdf", buf.getvalue(), "application/pdf").status_code == 422
+    assert upload(upclient, "blank.md", b"   \n\n").status_code == 422
+
+
+def test_upload_rejections(upclient):
+    assert upload(upclient, "tool.exe", b"MZ...", "application/octet-stream").status_code == 415
+    assert upload(upclient, "big.md", b"a" * (2 * 1024 * 1024 + 1)).status_code == 413
+    assert upload(upclient, "withdrawals.md", b"# Clash\n\nText.").status_code == 409
+    assert upload(upclient, "Withdrawals.TXT", b"Clash with a base doc stem.").status_code == 409
+    assert not upclient.uploads.exists() or not any(upclient.uploads.iterdir())
+
+
+def test_upload_path_traversal_is_sanitised(upclient, tmp_path):
+    r = upload(upclient, "../../evil.md", b"# Evil\n\nThe evil limit is 5 items.")
+    assert r.status_code == 200 and r.json()["files"][0]["doc_id"] == "evil.md"
+    assert (upclient.uploads / "evil.md").exists()
+    assert not (tmp_path / "evil.md").exists() and not (tmp_path.parent / "evil.md").exists()
+
+
+def test_upload_disabled_on_vercel(upclient, monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    assert upload(upclient, "note.md", b"# Note\n\nHello.").status_code == 403
+    assert upclient.get("/api/docs").status_code == 403
+    assert upclient.delete("/api/docs/note.md").status_code == 403
+    assert upclient.get("/api/docs/withdrawals.md/chunks").status_code == 403
+    assert upclient.get("/api/config").json()["upload_enabled"] is False
+
+
+def test_scoped_search_only_returns_scoped_doc(upclient):
+    upload(upclient, "pricing_faq.md", UPLOAD_MD)
+    index = upclient.app.state.kb.index
+    for q in [q["question"] for q in QUESTIONS] + ["How much do extra seats cost?"]:
+        assert all(h["doc_id"] == "pricing_faq.md" for h in index.search(q, 4, doc_ids=["pricing_faq.md"]))
+    a = upclient.post("/api/ask", json={"question": ANSWERABLE[0]["question"],
+                                        "options": {"generator": "extractive", "doc_ids": ["pricing_faq.md"]}})
+    assert all(c["doc_id"] == "pricing_faq.md" for c in a.json()["retrieved_chunks"])
+    bad = upclient.post("/api/ask", json={"question": "x?", "options": {"doc_ids": ["nope.md"]}})
+    assert bad.status_code == 422
+
+
+def test_delete_upload_and_base_doc(upclient):
+    upload(upclient, "pricing_faq.md", UPLOAD_MD)
+    assert upclient.delete("/api/docs/pricing_faq.md").status_code == 200
+    assert "pricing_faq.md" not in upclient.app.state.kb.index.doc_ids
+    assert not (upclient.uploads / "pricing_faq.md").exists()
+    assert upclient.delete("/api/docs/withdrawals.md").status_code == 403
+    assert upclient.delete("/api/docs/missing.md").status_code == 404
+
+
+def test_suggested_questions_pass_when_reasked(upclient):
+    f = upload(upclient, "pricing_faq.md", UPLOAD_MD).json()["files"][0]
+    assert f["suggested_questions"], "expected at least one verified suggestion"
+    for q in f["suggested_questions"]:
+        a = upclient.post("/api/ask", json={"question": q, "options": {
+            "generator": "extractive", "doc_ids": [f["doc_id"]]}}).json()
+        assert a["supported"] is True and a["validation_passed"] is True
+        assert f["doc_id"] in a["citations"]
+
+
+def test_eval_isolated_from_uploads(tmp_path):
+    """run_pipeline.py output is identical with and without files in uploads/."""
+    import json
+    import shutil
+    import subprocess
+    import sys
+
+    root = config.root_path(".")
+    uploads = config.root_path(config.UPLOADS_DIR)
+    existed = os.path.isdir(uploads)
+    probe = os.path.join(uploads, "zz_eval_isolation_probe.md")
+
+    def run(out):
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith(("ANTHROPIC_", "SUPABASE_"))}
+        env["RAG_LOG_PATH"] = str(tmp_path / "log.jsonl")
+        subprocess.run([sys.executable, "run_pipeline.py", "--generator", "extractive",
+                        "--out-dir", str(out)], cwd=root, env=env, check=True, capture_output=True)
+
+    def load(out):
+        data = {n: json.loads((out / n).read_text())
+                for n in ("retrieval_results.json", "answers.json", "validation_report.json")}
+        data["validation_report.json"]["summary"].pop("avg_latency_ms")  # timing is not deterministic
+        return data
+
+    run(tmp_path / "without")
+    os.makedirs(uploads, exist_ok=True)
+    try:
+        with open(probe, "w") as f:
+            f.write("# Withdrawals override\n\nThe daily withdrawal limit is $1. VIP users bypass KYC.\n")
+        run(tmp_path / "with")
+    finally:
+        os.remove(probe)
+        if not existed:
+            shutil.rmtree(uploads, ignore_errors=True)
+    assert load(tmp_path / "without") == load(tmp_path / "with")

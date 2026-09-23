@@ -1,5 +1,6 @@
 """Load docs and split them into heading-aware chunks of at most CHUNK_CHARS."""
 
+import io
 import os
 import re
 from dataclasses import asdict, dataclass
@@ -7,7 +8,7 @@ from dataclasses import asdict, dataclass
 from . import config
 from .obs import log
 
-DOC_EXTENSIONS = (".md", ".txt")
+DOC_EXTENSIONS = (".md", ".txt", ".pdf")
 _HEADING = re.compile(r"^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
 
@@ -18,18 +19,45 @@ class Chunk:
     chunk_id: str
     heading: str
     text: str
+    source: str = "base"
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
-def load_docs(docs_dir: str = config.DOCS_DIR) -> list[dict]:
+def pdf_text(data: bytes) -> str:
+    """Extract text page by page with pypdf (imported lazily); pages without text are skipped."""
+    from pypdf import PdfReader
+
+    pages = [(page.extract_text() or "").strip() for page in PdfReader(io.BytesIO(data)).pages]
+    return "\n\n".join(p for p in pages if p)
+
+
+def read_text(name: str, data: bytes) -> str:
+    if name.lower().endswith(".pdf"):
+        return pdf_text(data)
+    return data.decode("utf-8", errors="replace").replace("\x00", "")
+
+
+def load_docs(dirs=config.DOCS_DIR) -> list[dict]:
+    """Load docs from one directory, or from [(dir, source), ...] with source "base" | "upload".
+
+    Each doc is {doc_id, text, source, added_at}. Files are sorted by name within each directory,
+    and a directory that doesn't exist is skipped.
+    """
+    if isinstance(dirs, str):
+        dirs = [(dirs, "base")]
     docs = []
-    for name in sorted(os.listdir(docs_dir)):
-        path = os.path.join(docs_dir, name)
-        if os.path.isfile(path) and name.lower().endswith(DOC_EXTENSIONS):
-            with open(path, encoding="utf-8") as f:
-                docs.append({"doc_id": name, "text": f.read()})
+    for directory, source in dirs:
+        if not os.path.isdir(directory):
+            continue
+        for name in sorted(os.listdir(directory)):
+            path = os.path.join(directory, name)
+            if os.path.isfile(path) and name.lower().endswith(DOC_EXTENSIONS):
+                with open(path, "rb") as f:
+                    text = read_text(name, f.read())
+                docs.append({"doc_id": name, "text": text, "source": source,
+                             "added_at": os.path.getmtime(path)})
     return docs
 
 
@@ -102,7 +130,8 @@ def chunk(docs: list[dict], chunk_chars: int = config.CHUNK_CHARS) -> list[Chunk
         for heading, body in _sections(doc["text"]):
             for text in _pack(body, chunk_chars):
                 if text.strip():
-                    chunks.append(Chunk(doc["doc_id"], f"{stem}_{i}", heading, text.strip()))
+                    chunks.append(Chunk(doc["doc_id"], f"{stem}_{i}", heading, text.strip(),
+                                        doc.get("source", "base")))
                     i += 1
     log("ingest", docs_loaded=len(docs), chunks_created=len(chunks))
     return chunks

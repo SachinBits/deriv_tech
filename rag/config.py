@@ -1,6 +1,7 @@
 """Pipeline constants. Thresholds were calibrated with run_pipeline.py (see README)."""
 
 DOCS_DIR = "docs"
+UPLOADS_DIR = "uploads"  # local-only user uploads; never used by run_pipeline.py
 QUESTIONS_PATH = "questions.json"
 PROMPT_PATH = "prompts/answer.txt"
 LOG_PATH = "logs/pipeline.jsonl"
