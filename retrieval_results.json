@@ -1,0 +1,302 @@
+[
+  {
+    "question_id": "q1",
+    "question": "How many password reset requests can a user make per hour?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "auth_password_reset.md",
+        "chunk_id": "auth_password_reset_1",
+        "score": 0.3555,
+        "text": "Users can request a password reset from the sign-in page by selecting \"Forgot password\" and entering the email address on the account. Users can request up to 3 password resets per hour. Additional requests within the same hour are rejected, and the user sees a message asking them to try again later."
+      },
+      {
+        "doc_id": "auth_password_reset.md",
+        "chunk_id": "auth_password_reset_2",
+        "score": 0.129,
+        "text": "Each reset email contains a single-use link. Reset links expire after 30 minutes. If the link has expired, the user must request a new reset from the sign-in page. Requesting a new link invalidates any earlier link that has not been used."
+      },
+      {
+        "doc_id": "auth_password_reset.md",
+        "chunk_id": "auth_password_reset_4",
+        "score": 0.1143,
+        "text": "Ask the user to check their spam folder before requesting another reset email. Confirm that the email address they entered matches the one registered on the account."
+      },
+      {
+        "doc_id": "account_2fa.md",
+        "chunk_id": "account_2fa_2",
+        "score": 0.091,
+        "text": "Each user gets 10 one-time backup codes when they turn on 2FA. Each backup code works once. Users should store the codes somewhere safe and offline, such as a password manager."
+      }
+    ]
+  },
+  {
+    "question_id": "q2",
+    "question": "What is the API rate limit for the Enterprise plan?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_1",
+        "score": 0.5934,
+        "text": "The API rate limit for the Standard plan is 100 requests per minute. The API rate limit for the Enterprise plan is 1,000 requests per minute. Limits are measured over a rolling one-minute window."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_3",
+        "score": 0.1735,
+        "text": "Clients that exceed the API rate limit receive an HTTP 429 Too Many Requests response with a Retry-After header. The Retry-After header states how many seconds the client should wait before sending the next request. Clients should back off and retry after that interval instead of retrying immediately."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_0",
+        "score": 0.1131,
+        "text": "Rate limits protect the platform and keep response times predictable for every customer. This page covers the REST API. Only the REST API is documented here."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_2",
+        "score": 0.0956,
+        "text": "Limits apply per API key. If an organisation uses several API keys, each key has its own allowance. Creating extra keys to work around the limit is not permitted under the terms of service."
+      }
+    ]
+  },
+  {
+    "question_id": "q3",
+    "question": "How long does KYC review take after submission?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "kyc_verification.md",
+        "chunk_id": "kyc_verification_2",
+        "score": 0.3508,
+        "text": "KYC review is completed within 24 hours of submission. Customers receive an email when the review is finished. If a document is blurry or cropped, the reviewer rejects it and the customer is asked to upload a clearer copy, which starts a new review."
+      },
+      {
+        "doc_id": "kyc_verification.md",
+        "chunk_id": "kyc_verification_3",
+        "score": 0.0882,
+        "text": "Accounts cannot withdraw funds until verification is approved. Customers can still sign in, view balances and update their profile while the review is in progress."
+      },
+      {
+        "doc_id": "kyc_verification.md",
+        "chunk_id": "kyc_verification_0",
+        "score": 0.0814,
+        "text": "Know Your Customer (KYC) checks confirm that every account belongs to a real, identifiable person. Verification is required before funds can leave the platform."
+      },
+      {
+        "doc_id": "withdrawals.md",
+        "chunk_id": "withdrawals_4",
+        "score": 0.0,
+        "text": "The account must have completed identity verification before any withdrawal can be requested. The destination bank account must be in the account holder's own name. Customers can track the status of each request on the Withdrawals page in their dashboard."
+      }
+    ]
+  },
+  {
+    "question_id": "q4",
+    "question": "What is the daily withdrawal limit?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "withdrawals.md",
+        "chunk_id": "withdrawals_2",
+        "score": 0.4141,
+        "text": "The daily withdrawal limit is $10,000. The limit covers the total of all withdrawal requests made by an account in a single calendar day. Requests above the remaining allowance are declined with a message showing the amount still available."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_1",
+        "score": 0.0714,
+        "text": "The API rate limit for the Standard plan is 100 requests per minute. The API rate limit for the Enterprise plan is 1,000 requests per minute. Limits are measured over a rolling one-minute window."
+      },
+      {
+        "doc_id": "withdrawals.md",
+        "chunk_id": "withdrawals_4",
+        "score": 0.07,
+        "text": "The account must have completed identity verification before any withdrawal can be requested. The destination bank account must be in the account holder's own name. Customers can track the status of each request on the Withdrawals page in their dashboard."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_2",
+        "score": 0.0462,
+        "text": "Limits apply per API key. If an organisation uses several API keys, each key has its own allowance. Creating extra keys to work around the limit is not permitted under the terms of service."
+      }
+    ]
+  },
+  {
+    "question_id": "q5",
+    "question": "How quickly must the on-call engineer respond to a P1 incident?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "incident_escalation.md",
+        "chunk_id": "incident_escalation_2",
+        "score": 0.5509,
+        "text": "For P1 incidents, the on-call engineer must respond within 15 minutes. For P2 incidents, the on-call engineer must respond within 1 hour. For P3 incidents, the on-call engineer must respond within 1 business day."
+      },
+      {
+        "doc_id": "incident_escalation.md",
+        "chunk_id": "incident_escalation_4",
+        "score": 0.1254,
+        "text": "Support posts status updates in the incident channel at regular intervals until the incident is resolved. After resolution, the on-call SRE writes a short post-incident summary describing the cause and the fix."
+      },
+      {
+        "doc_id": "incident_escalation.md",
+        "chunk_id": "incident_escalation_1",
+        "score": 0.063,
+        "text": "P1 means a full outage or a problem that blocks most customers. P2 means a major feature is degraded for many customers. P3 means a minor issue with a workaround available."
+      },
+      {
+        "doc_id": "incident_escalation.md",
+        "chunk_id": "incident_escalation_3",
+        "score": 0.0561,
+        "text": "Incidents escalate from support to the on-call SRE, and from the on-call SRE to the engineering manager. Support opens the incident ticket, records the severity and pages the on-call SRE. If the on-call SRE cannot stabilise the problem, they escalate to the engineering manager."
+      }
+    ]
+  },
+  {
+    "question_id": "q6",
+    "question": "What happens when a client exceeds the API rate limit?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_1",
+        "score": 0.3825,
+        "text": "The API rate limit for the Standard plan is 100 requests per minute. The API rate limit for the Enterprise plan is 1,000 requests per minute. Limits are measured over a rolling one-minute window."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_3",
+        "score": 0.2631,
+        "text": "Clients that exceed the API rate limit receive an HTTP 429 Too Many Requests response with a Retry-After header. The Retry-After header states how many seconds the client should wait before sending the next request. Clients should back off and retry after that interval instead of retrying immediately."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_0",
+        "score": 0.1325,
+        "text": "Rate limits protect the platform and keep response times predictable for every customer. This page covers the REST API. Only the REST API is documented here."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_2",
+        "score": 0.112,
+        "text": "Limits apply per API key. If an organisation uses several API keys, each key has its own allowance. Creating extra keys to work around the limit is not permitted under the terms of service."
+      }
+    ]
+  },
+  {
+    "question_id": "q7",
+    "question": "Can support manually bypass identity verification for VIP users?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "account_2fa.md",
+        "chunk_id": "account_2fa_3",
+        "score": 0.3986,
+        "text": "Resetting 2FA requires identity re-verification. Users who lose access to their authenticator app and their backup codes must complete identity re-verification before 2FA can be reset. Support agents must never reset 2FA from a chat or email request alone."
+      },
+      {
+        "doc_id": "withdrawals.md",
+        "chunk_id": "withdrawals_4",
+        "score": 0.2208,
+        "text": "The account must have completed identity verification before any withdrawal can be requested. The destination bank account must be in the account holder's own name. Customers can track the status of each request on the Withdrawals page in their dashboard."
+      },
+      {
+        "doc_id": "kyc_verification.md",
+        "chunk_id": "kyc_verification_4",
+        "score": 0.1053,
+        "text": "Support agents should point customers to the verification page in account settings and explain which documents are accepted. Agents cannot see or edit the uploaded documents."
+      },
+      {
+        "doc_id": "account_2fa.md",
+        "chunk_id": "account_2fa_4",
+        "score": 0.0722,
+        "text": "Users can turn 2FA off from security settings after entering a current code from their authenticator app."
+      }
+    ]
+  },
+  {
+    "question_id": "q8",
+    "question": "What is the rate limit for the GraphQL API?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_1",
+        "score": 0.4219,
+        "text": "The API rate limit for the Standard plan is 100 requests per minute. The API rate limit for the Enterprise plan is 1,000 requests per minute. Limits are measured over a rolling one-minute window."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_3",
+        "score": 0.2242,
+        "text": "Clients that exceed the API rate limit receive an HTTP 429 Too Many Requests response with a Retry-After header. The Retry-After header states how many seconds the client should wait before sending the next request. Clients should back off and retry after that interval instead of retrying immediately."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_0",
+        "score": 0.1908,
+        "text": "Rate limits protect the platform and keep response times predictable for every customer. This page covers the REST API. Only the REST API is documented here."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_2",
+        "score": 0.1613,
+        "text": "Limits apply per API key. If an organisation uses several API keys, each key has its own allowance. Creating extra keys to work around the limit is not permitted under the terms of service."
+      }
+    ]
+  },
+  {
+    "question_id": "q9",
+    "question": "How long do crypto withdrawals take?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "withdrawals.md",
+        "chunk_id": "withdrawals_4",
+        "score": 0.164,
+        "text": "The account must have completed identity verification before any withdrawal can be requested. The destination bank account must be in the account holder's own name. Customers can track the status of each request on the Withdrawals page in their dashboard."
+      },
+      {
+        "doc_id": "withdrawals.md",
+        "chunk_id": "withdrawals_1",
+        "score": 0.149,
+        "text": "Bank transfer withdrawals take 1 to 3 business days to arrive after the request is processed. Weekends and public holidays are not business days, so a request made on a Friday may arrive the following week."
+      },
+      {
+        "doc_id": "auth_password_reset.md",
+        "chunk_id": "auth_password_reset_3",
+        "score": 0.0,
+        "text": "To protect accounts from password guessing, the account locks for 15 minutes after 5 failed login attempts. During the lockout period, sign-in is blocked even if the correct password is entered. The lock clears automatically when the 15 minutes have passed, and no action from support is needed."
+      },
+      {
+        "doc_id": "account_2fa.md",
+        "chunk_id": "account_2fa_1",
+        "score": 0.0,
+        "text": "2FA uses TOTP authenticator apps. After entering their password, users type the six-digit code shown in their authenticator app. Codes change every 30 seconds."
+      }
+    ]
+  },
+  {
+    "question_id": "q10",
+    "question": "Do customers receive service credits for P1 outages?",
+    "retrieved_chunks": [
+      {
+        "doc_id": "kyc_verification.md",
+        "chunk_id": "kyc_verification_2",
+        "score": 0.1659,
+        "text": "KYC review is completed within 24 hours of submission. Customers receive an email when the review is finished. If a document is blurry or cropped, the reviewer rejects it and the customer is asked to upload a clearer copy, which starts a new review."
+      },
+      {
+        "doc_id": "incident_escalation.md",
+        "chunk_id": "incident_escalation_1",
+        "score": 0.1306,
+        "text": "P1 means a full outage or a problem that blocks most customers. P2 means a major feature is degraded for many customers. P3 means a minor issue with a workaround available."
+      },
+      {
+        "doc_id": "api_rate_limits.md",
+        "chunk_id": "api_rate_limits_2",
+        "score": 0.0844,
+        "text": "Limits apply per API key. If an organisation uses several API keys, each key has its own allowance. Creating extra keys to work around the limit is not permitted under the terms of service."
+      },
+      {
+        "doc_id": "withdrawals.md",
+        "chunk_id": "withdrawals_0",
+        "score": 0.0687,
+        "text": "This article describes how customers move funds from their account to a bank account."
+      }
+    ]
+  }
+]

@@ -1,0 +1,477 @@
+{
+  "summary": {
+    "total": 10,
+    "validation_pass_rate": 1.0,
+    "supported_count": 6,
+    "refused_count": 4,
+    "refusal_accuracy": 1.0,
+    "refusal_correct": 10,
+    "refusal_evaluated": 10,
+    "retrieval_hit_at_k": 1.0,
+    "retrieval_k": 4,
+    "retrieval_evaluated": 6,
+    "generator": "extractive",
+    "options_applied": {
+      "confidence_threshold": {
+        "enabled": true,
+        "value": 0.1
+      },
+      "length": "medium"
+    },
+    "thresholds": {
+      "min_score": 0.1,
+      "min_coverage": 0.6
+    },
+    "ablation": {
+      "threshold_on": {
+        "threshold": 0.1,
+        "refusal_accuracy": 1.0,
+        "refusal_correct": 10,
+        "evaluated": 10,
+        "refusal_reasons": {
+          "insufficient_coverage": 2,
+          "key_term_not_in_docs": 2
+        }
+      },
+      "threshold_off": {
+        "threshold": 0.1,
+        "refusal_accuracy": 1.0,
+        "refusal_correct": 10,
+        "evaluated": 10,
+        "refusal_reasons": {
+          "insufficient_coverage": 2,
+          "key_term_not_in_docs": 2
+        }
+      },
+      "length": {
+        "short": {
+          "avg_words": 11.3,
+          "answered": 6,
+          "validation_pass_rate": 1.0
+        },
+        "medium": {
+          "avg_words": 24.2,
+          "answered": 6,
+          "validation_pass_rate": 1.0
+        },
+        "detailed": {
+          "avg_words": 46.3,
+          "answered": 6,
+          "validation_pass_rate": 1.0
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "question_id": "q1",
+      "expected_behavior": "answerable",
+      "supported": true,
+      "correct_behavior": true,
+      "refusal_reason": null,
+      "top_score": 0.3555,
+      "coverage": 0.8333,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "1 citation(s)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "all citations retrieved"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "within medium"
+        }
+      ]
+    },
+    {
+      "question_id": "q2",
+      "expected_behavior": "answerable",
+      "supported": true,
+      "correct_behavior": true,
+      "refusal_reason": null,
+      "top_score": 0.5934,
+      "coverage": 1.0,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "1 citation(s)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "all citations retrieved"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "within medium"
+        }
+      ]
+    },
+    {
+      "question_id": "q3",
+      "expected_behavior": "answerable",
+      "supported": true,
+      "correct_behavior": true,
+      "refusal_reason": null,
+      "top_score": 0.3508,
+      "coverage": 0.75,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "1 citation(s)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "all citations retrieved"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "within medium"
+        }
+      ]
+    },
+    {
+      "question_id": "q4",
+      "expected_behavior": "answerable",
+      "supported": true,
+      "correct_behavior": true,
+      "refusal_reason": null,
+      "top_score": 0.4141,
+      "coverage": 1.0,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "1 citation(s)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "all citations retrieved"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "within medium"
+        }
+      ]
+    },
+    {
+      "question_id": "q5",
+      "expected_behavior": "answerable",
+      "supported": true,
+      "correct_behavior": true,
+      "refusal_reason": null,
+      "top_score": 0.5509,
+      "coverage": 0.8,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "1 citation(s)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "all citations retrieved"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "within medium"
+        }
+      ]
+    },
+    {
+      "question_id": "q6",
+      "expected_behavior": "answerable",
+      "supported": true,
+      "correct_behavior": true,
+      "refusal_reason": null,
+      "top_score": 0.3825,
+      "coverage": 0.8333,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "2 citation(s)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "all citations retrieved"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "within medium"
+        }
+      ]
+    },
+    {
+      "question_id": "q7",
+      "expected_behavior": "unanswerable",
+      "supported": false,
+      "correct_behavior": true,
+      "refusal_reason": "key_term_not_in_docs",
+      "top_score": 0.3986,
+      "coverage": null,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "not applicable (refusal)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "no citations"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "refusal (not length-limited)"
+        }
+      ]
+    },
+    {
+      "question_id": "q8",
+      "expected_behavior": "partially_answerable",
+      "supported": false,
+      "correct_behavior": true,
+      "refusal_reason": "key_term_not_in_docs",
+      "top_score": 0.4219,
+      "coverage": null,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "not applicable (refusal)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "no citations"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "refusal (not length-limited)"
+        }
+      ]
+    },
+    {
+      "question_id": "q9",
+      "expected_behavior": "partially_answerable",
+      "supported": false,
+      "correct_behavior": true,
+      "refusal_reason": "insufficient_coverage",
+      "top_score": 0.164,
+      "coverage": 0.3333,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "not applicable (refusal)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "no citations"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "refusal (not length-limited)"
+        }
+      ]
+    },
+    {
+      "question_id": "q10",
+      "expected_behavior": "unanswerable",
+      "supported": false,
+      "correct_behavior": true,
+      "refusal_reason": "insufficient_coverage",
+      "top_score": 0.1659,
+      "coverage": 0.5,
+      "checks": [
+        {
+          "name": "non_empty",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "supported_has_citation",
+          "passed": true,
+          "detail": "not applicable (refusal)"
+        },
+        {
+          "name": "citations_in_retrieved",
+          "passed": true,
+          "detail": "no citations"
+        },
+        {
+          "name": "unsupported_marked",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "numbers_grounded",
+          "passed": true,
+          "detail": "ok"
+        },
+        {
+          "name": "length_within_limit",
+          "passed": true,
+          "detail": "refusal (not length-limited)"
+        }
+      ]
+    }
+  ]
+}

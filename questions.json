@@ -1,0 +1,12 @@
+[
+  {"id": "q1", "question": "How many password reset requests can a user make per hour?", "expected_behavior": "answerable", "expected_doc": "auth_password_reset.md"},
+  {"id": "q2", "question": "What is the API rate limit for the Enterprise plan?", "expected_behavior": "answerable", "expected_doc": "api_rate_limits.md"},
+  {"id": "q3", "question": "How long does KYC review take after submission?", "expected_behavior": "answerable", "expected_doc": "kyc_verification.md"},
+  {"id": "q4", "question": "What is the daily withdrawal limit?", "expected_behavior": "answerable", "expected_doc": "withdrawals.md"},
+  {"id": "q5", "question": "How quickly must the on-call engineer respond to a P1 incident?", "expected_behavior": "answerable", "expected_doc": "incident_escalation.md"},
+  {"id": "q6", "question": "What happens when a client exceeds the API rate limit?", "expected_behavior": "answerable", "expected_doc": "api_rate_limits.md"},
+  {"id": "q7", "question": "Can support manually bypass identity verification for VIP users?", "expected_behavior": "unanswerable"},
+  {"id": "q8", "question": "What is the rate limit for the GraphQL API?", "expected_behavior": "partially_answerable"},
+  {"id": "q9", "question": "How long do crypto withdrawals take?", "expected_behavior": "partially_answerable"},
+  {"id": "q10", "question": "Do customers receive service credits for P1 outages?", "expected_behavior": "unanswerable"}
+]

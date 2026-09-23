@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support Assistant</title>
+<style>
+  :root {
+    --bg: #212121;
+    --surface: #2a2a2a;
+    --surface-2: #323232;
+    --border: #3d3d3d;
+    --text: #ececec;
+    --muted: #a3a3a3;
+    --user-bubble: #303030;
+    --accent: #10a37f;
+    --accent-soft: rgba(16, 163, 127, 0.14);
+    --warn: #f59e0b;
+    --warn-soft: rgba(245, 158, 11, 0.14);
+    --danger: #ef4444;
+    --mark: rgba(250, 204, 21, 0.28);
+    --focus: #60a5fa;
+    --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    --radius-card: 12px;
+    --radius-composer: 24px;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #ffffff; --surface: #f7f7f8; --surface-2: #ececf1; --border: #e3e3e8;
+      --text: #1f1f1f; --muted: #6b6b76; --user-bubble: #f1f1f4;
+      --accent: #0e8f6f; --accent-soft: rgba(14, 143, 111, 0.1);
+      --warn: #b45309; --warn-soft: rgba(217, 119, 6, 0.1); --danger: #dc2626;
+      --mark: rgba(250, 204, 21, 0.45); --focus: #2563eb;
+      --shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #ffffff; --surface: #f7f7f8; --surface-2: #ececf1; --border: #e3e3e8;
+    --text: #1f1f1f; --muted: #6b6b76; --user-bubble: #f1f1f4;
+    --accent: #0e8f6f; --accent-soft: rgba(14, 143, 111, 0.1);
+    --warn: #b45309; --warn-soft: rgba(217, 119, 6, 0.1); --danger: #dc2626;
+    --mark: rgba(250, 204, 21, 0.45); --focus: #2563eb;
+    --shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px; line-height: 1.55; overflow-x: hidden;
+  }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* Header */
+  header {
+    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 16px; font-weight: 600; margin: 0; white-space: nowrap; }
+  .kb-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: 12.5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.ok { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .dot.bad { background: var(--danger); }
+  .spacer { flex: 1; }
+  @media (max-width: 420px) { header { gap: 8px; padding: 10px 12px; } header h1 { font-size: 15px; } .kb-pill { font-size: 11.5px; padding: 3px 8px; } }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; border: 1px solid transparent; background: transparent;
+    display: inline-grid; place-items: center; color: var(--muted); flex: none;
+  }
+  .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  /* Main column */
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 200px; }
+  .empty { text-align: center; padding-top: 9vh; }
+  .empty h2 { font-size: 28px; margin: 0 0 6px; font-weight: 600; }
+  .empty p { color: var(--muted); margin: 0 0 28px; }
+  .suggestions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; text-align: left; }
+  .suggestion {
+    padding: 14px 16px; border-radius: var(--radius-card); border: 1px solid var(--border);
+    background: transparent; text-align: left; color: var(--text); font-size: 14px; min-height: 64px;
+  }
+  .suggestion:hover { background: var(--surface); }
+  @media (max-width: 540px) { .suggestions { grid-template-columns: 1fr; } }
+
+  .thread { display: flex; flex-direction: column; gap: 22px; }
+  .user-msg { align-self: flex-end; max-width: 85%; background: var(--user-bubble); padding: 10px 16px;
+    border-radius: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card);
+    padding: 16px; min-width: 0; }
+  .card.grounded { border-left: 3px solid var(--accent); }
+  .card.refused { border-left: 3px solid var(--warn); }
+  .card-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+  .status { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; }
+  .status.ok { color: var(--accent); background: var(--accent-soft); }
+  .status.warn { color: var(--warn); background: var(--warn-soft); }
+  .reason { font-size: 12.5px; color: var(--muted); }
+  .conf { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 12px; color: var(--muted); }
+  .bar { position: relative; width: 110px; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: visible; }
+  .bar > .fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--accent); }
+  .bar.low > .fill { background: var(--warn); }
+  .bar > .marker { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--text); border-radius: 1px; opacity: .75; }
+  .answer { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 12px; font-size: 15.5px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg); font-size: 12.5px; color: var(--text); }
+  .chip.cite:hover { border-color: var(--accent); color: var(--accent); }
+  .chip svg { width: 12px; height: 12px; }
+
+  details { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; list-style: none; padding: 2px 0;
+    display: flex; align-items: center; gap: 6px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg); transition: transform .15s; margin: 0 3px; }
+  details[open] > summary::before { transform: rotate(45deg); }
+  .src { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: var(--bg);
+    border: 1px solid var(--border); border-left: 3px solid var(--border); transition: box-shadow .3s; }
+  .src.cited { border-left-color: var(--accent); }
+  .src.flash { box-shadow: 0 0 0 2px var(--accent); }
+  .src-head { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; flex-wrap: wrap; }
+  .src-head .id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  .src-head .bar { width: 70px; height: 4px; }
+  .src-head .tag { color: var(--accent); font-weight: 600; }
+  .src-text { font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+  mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+  .checks { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; }
+  .checks li { display: flex; gap: 8px; padding: 3px 0; }
+  .checks .ok { color: var(--accent); } .checks .bad { color: var(--danger); }
+  .checks .detail { color: var(--muted); overflow-wrap: anywhere; }
+
+  .footer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 12px;
+    font-size: 12px; color: var(--muted); }
+  .footer .trim { padding: 1px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+  .footer .copy { margin-left: auto; width: 30px; height: 30px; }
+
+  .typing { display: inline-flex; gap: 5px; padding: 14px 16px; }
+  .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite ease-in-out; }
+  .typing span:nth-child(2) { animation-delay: .15s; } .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .typing span { animation: none; opacity: .6; } }
+  .error-card { border-left: 3px solid var(--danger); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .btn { border: 1px solid var(--border); background: var(--bg); border-radius: 999px; padding: 5px 14px; font-size: 13px; }
+  .btn:hover { background: var(--surface-2); }
+
+  /* Composer */
+  .composer-wrap { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+    background: linear-gradient(to top, var(--bg) 70%, transparent); padding: 12px 16px 16px; }
+  .composer-inner { position: relative; max-width: 760px; margin: 0 auto; }
+  .composer { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-composer);
+    padding: 8px 8px 8px 8px; box-shadow: var(--shadow); }
+  .composer-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 6px 6px; }
+  .composer-chips:empty { display: none; }
+  .opt-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); font-size: 12.5px; border: none; }
+  .opt-chip button { border: none; background: transparent; color: inherit; width: 20px; height: 20px;
+    border-radius: 50%; display: grid; place-items: center; padding: 0; font-size: 12px; }
+  .opt-chip button:hover { background: var(--accent-soft); }
+  .composer-row { display: flex; align-items: flex-end; gap: 6px; }
+  textarea { flex: 1; min-width: 0; resize: none; border: none; outline: none; background: transparent;
+    padding: 8px 4px; max-height: 200px; line-height: 1.45; }
+  textarea:focus-visible { outline: none; }
+  .composer:focus-within { border-color: var(--muted); }
+  .round { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: transparent;
+    display: grid; place-items: center; color: var(--text); flex: none; }
+  .round:hover { background: var(--surface-2); }
+  .round[aria-expanded="true"] { background: var(--surface-2); }
+  .send { background: var(--text); color: var(--bg); border: none; }
+  .send:hover { background: var(--text); opacity: .85; }
+  .send:disabled { opacity: .3; cursor: not-allowed; }
+  .round svg { width: 18px; height: 18px; }
+  .hint { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+
+  /* Tools popover */
+  .popover { position: absolute; left: 0; bottom: calc(100% + 8px); width: min(340px, 100%);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow);
+    padding: 8px; display: none; }
+  .popover.open { display: block; }
+  .pop-section { padding: 10px 10px; border-radius: 10px; }
+  .pop-section + .pop-section { border-top: 1px solid var(--border); border-radius: 0; }
+  .pop-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .pop-title { font-size: 14px; font-weight: 500; }
+  .pop-sub { font-size: 12px; color: var(--muted); }
+  .switch { position: relative; width: 38px; height: 22px; border-radius: 999px; border: none; background: var(--surface-2);
+    flex: none; padding: 0; transition: background .15s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  .switch[aria-checked="true"] { background: var(--accent); }
+  .switch[aria-checked="true"]::after { transform: translateX(16px); }
+  .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .slider-row input { flex: 1; accent-color: var(--accent); min-width: 0; }
+  .slider-row output { font-variant-numeric: tabular-nums; font-size: 13px; width: 36px; text-align: right; }
+  .seg { display: flex; margin-top: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+  .seg button { flex: 1; border: none; background: transparent; border-radius: 7px; padding: 5px 4px; font-size: 13px; color: var(--muted); }
+  .seg button[aria-checked="true"] { background: var(--surface-2); color: var(--text); font-weight: 500; }
+  .seg button:disabled { opacity: .4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Support Assistant</h1>
+  <span class="kb-pill" id="kbPill" title="Knowledge base"><span class="dot" id="kbDot"></span><span id="kbText">Loading…</span></span>
+  <span class="spacer"></span>
+  <button class="icon-btn" id="themeBtn" aria-label="Toggle colour theme" title="Toggle theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
+</header>
+
+<main>
+  <section class="empty" id="empty">
+    <h2>Ask the docs</h2>
+    <p>Answers come only from your knowledge base, with citations.</p>
+    <div class="suggestions" id="suggestions"></div>
+  </section>
+  <div class="thread" id="thread" aria-live="polite"></div>
+</main>
+
+<div class="composer-wrap">
+  <div class="composer-inner">
+    <div class="popover" id="popover" role="menu" aria-label="Answer options">
+      <div class="pop-section">
+        <div class="pop-row">
+          <div>
+            <div class="pop-title" id="thrLabel">Confidence threshold</div>
+            <div class="pop-sub">Refuse when the best match scores below it</div>
+          </div>
+          <button class="switch" id="thrSwitch" role="menuitemcheckbox" aria-checked="true" aria-labelledby="thrLabel"></button>
+        </div>
+        <div class="slider-row" id="thrSliderRow">
+          <input type="range" id="thrSlider" min="0" max="0.5" step="0.01" value="0.10" aria-label="Confidence threshold value">
+          <output id="thrValue" for="thrSlider">0.10</output>
+        </div>
+      </div>
+      <div class="pop-section">
+        <div class="pop-title" id="lenLabel">Answer length</div>
+        <div class="seg" role="group" aria-labelledby="lenLabel" id="lenSeg">
+          <button role="menuitemradio" data-length="off">Off</button>
+          <button role="menuitemradio" data-length="short">Short</button>
+          <button role="menuitemradio" data-length="medium">Medium</button>
+          <button role="menuitemradio" data-length="detailed">Detailed</button>
+        </div>
+      </div>
+      <div class="pop-section">
+        <div class="pop-title" id="genLabel">Model</div>
+        <div class="seg" role="group" aria-labelledby="genLabel" id="genSeg">
+          <button role="menuitemradio" data-gen="extractive">Extractive</button>
+          <button role="menuitemradio" data-gen="claude">Claude</button>
+        </div>
+      </div>
+    </div>
+
+    <form class="composer" id="composer">
+      <div class="composer-chips" id="optChips"></div>
+      <div class="composer-row">
+        <button type="button" class="round" id="plusBtn" aria-label="Answer options" aria-haspopup="menu" aria-expanded="false" aria-controls="popover">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <label for="input" class="sr-only">Ask a question</label>
+        <textarea id="input" rows="1" maxlength="500" placeholder="Ask a support question…"></textarea>
+        <button type="submit" class="round send" id="sendBtn" aria-label="Send question" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
+      </div>
+    </form>
+    <div class="hint">Enter to send · Shift+Enter for a new line</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const STORE_KEY = "support-assistant.options.v1";
+  const THEME_KEY = "support-assistant.theme";
+  const REASONS = {
+    low_retrieval_score: "Weak match in the docs",
+    key_term_not_in_docs: "Key term not in the docs",
+    insufficient_coverage: "Docs don't cover the question",
+    model_unsupported: "Model found no support",
+    validation_failed: "Failed validation",
+  };
+  const CHECK_LABELS = {
+    non_empty: "V1 Non-empty answer",
+    supported_has_citation: "V2 Supported answer has a citation",
+    citations_in_retrieved: "V3 Citations are retrieved chunks",
+    unsupported_marked: "V4 Refusal is marked",
+    numbers_grounded: "V5 Numbers are grounded",
+    length_within_limit: "V6 Length within limit",
+  };
+  const STOP = new Set("a an and are as at be by can do does for from how i in is it its my of on or the to what when where which who why will with you your".split(" "));
+
+  const storage = {
+    get(key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } },
+    set(key, value) { try { window.localStorage.setItem(key, value); } catch (e) { /* storage blocked */ } },
+  };
+
+  let cfg = null;
+  let busy = false;
+  const state = { thresholdEnabled: true, threshold: 0.10, length: "medium", generator: "extractive" };
+
+  // ---------- theme ----------
+  const savedTheme = storage.get(THEME_KEY);
+  if (savedTheme === "light" || savedTheme === "dark") document.documentElement.dataset.theme = savedTheme;
+  $("themeBtn").addEventListener("click", () => {
+    const current = document.documentElement.dataset.theme ||
+      (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    const next = current === "light" ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    storage.set(THEME_KEY, next);
+  });
+
+  // ---------- options ----------
+  function saveOptions() { storage.set(STORE_KEY, JSON.stringify(state)); }
+  function loadOptions() {
+    const d = cfg ? cfg.defaults : null;
+    if (d) {
+      state.thresholdEnabled = d.confidence_threshold_enabled;
+      state.threshold = d.confidence_threshold;
+      state.length = d.length || "off";
+    }
+    state.generator = cfg && cfg.generators.claude ? "claude" : "extractive";
+    try {
+      const saved = JSON.parse(storage.get(STORE_KEY) || "null");
+      if (saved && typeof saved === "object") {
+        if (typeof saved.thresholdEnabled === "boolean") state.thresholdEnabled = saved.thresholdEnabled;
+        if (typeof saved.threshold === "number" && saved.threshold >= 0 && saved.threshold <= 0.5) state.threshold = saved.threshold;
+        if (["off", "short", "medium", "detailed"].includes(saved.length)) state.length = saved.length;
+        if (saved.generator === "extractive" || saved.generator === "claude") state.generator = saved.generator;
+      }
+    } catch (e) { /* ignore corrupt storage */ }
+    if (state.generator === "claude" && !(cfg && cfg.generators.claude)) state.generator = "extractive";
+  }
+  function requestOptions() {
+    return {
+      confidence_threshold_enabled: state.thresholdEnabled,
+      confidence_threshold: Math.round(state.threshold * 100) / 100,
+      length: state.length === "off" ? null : state.length,
+      generator: state.generator,
+    };
+  }
+
+  function renderOptions() {
+    const sw = $("thrSwitch");
+    sw.setAttribute("aria-checked", String(state.thresholdEnabled));
+    $("thrSliderRow").hidden = !state.thresholdEnabled;
+    $("thrSlider").value = state.threshold;
+    $("thrValue").textContent = state.threshold.toFixed(2);
+    for (const b of $("lenSeg").querySelectorAll("button"))
+      b.setAttribute("aria-checked", String(b.dataset.length === state.length));
+    const claudeOk = !!(cfg && cfg.generators.claude);
+    for (const b of $("genSeg").querySelectorAll("button")) {
+      b.setAttribute("aria-checked", String(b.dataset.gen === state.generator));
+      if (b.dataset.gen === "claude") {
+        b.disabled = !claudeOk;
+        b.title = claudeOk ? "Claude generator" : "Set ANTHROPIC_API_KEY";
+        b.setAttribute("aria-disabled", String(!claudeOk));
+      }
+    }
+    // Active option chips inside the composer
+    const chips = $("optChips");
+    chips.replaceChildren();
+    const addChip = (label, onRemove) => {
+      const c = document.createElement("span");
+      c.className = "opt-chip";
+      const t = document.createElement("span");
+      t.textContent = label;
+      const x = document.createElement("button");
+      x.type = "button";
+      x.textContent = "✕";
+      x.setAttribute("aria-label", "Remove " + label);
+      x.addEventListener("click", () => { onRemove(); saveOptions(); renderOptions(); $("input").focus(); });
+      c.append(t, x);
+      chips.append(c);
+    };
+    if (state.thresholdEnabled) addChip("Threshold " + state.threshold.toFixed(2), () => { state.thresholdEnabled = false; });
+    if (state.length !== "off") addChip(state.length[0].toUpperCase() + state.length.slice(1), () => { state.length = "off"; });
+    if (state.generator === "claude") addChip("Claude", () => { state.generator = "extractive"; });
+  }
+
+  // ---------- popover ----------
+  const pop = $("popover"), plus = $("plusBtn");
+  const menuItems = () => [...pop.querySelectorAll("button:not(:disabled), input")].filter((el) => el.offsetParent !== null);
+  function openPopover() {
+    pop.classList.add("open");
+    plus.setAttribute("aria-expanded", "true");
+    const first = menuItems()[0];
+    if (first) first.focus();
+  }
+  function closePopover(returnFocus) {
+    if (!pop.classList.contains("open")) return;
+    pop.classList.remove("open");
+    plus.setAttribute("aria-expanded", "false");
+    if (returnFocus) plus.focus();
+  }
+  plus.addEventListener("click", (e) => {
+    e.stopPropagation();
+    pop.classList.contains("open") ? closePopover(true) : openPopover();
+  });
+  document.addEventListener("click", (e) => {
+    if (!pop.contains(e.target) && e.target !== plus) closePopover(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && pop.classList.contains("open")) { e.preventDefault(); closePopover(true); }
+  });
+  pop.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    if (e.target.type === "range") return; // let the slider use its arrows
+    const items = menuItems();
+    const i = items.indexOf(document.activeElement);
+    const next = items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length];
+    if (next) { e.preventDefault(); next.focus(); }
+  });
+  $("thrSwitch").addEventListener("click", () => {
+    state.thresholdEnabled = !state.thresholdEnabled; saveOptions(); renderOptions();
+  });
+  $("thrSlider").addEventListener("input", (e) => {
+    state.threshold = Number(e.target.value); saveOptions(); renderOptions();
+  });
+  $("lenSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.length = b.dataset.length; saveOptions(); renderOptions();
+  });
+  $("genSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b || b.disabled) return;
+    state.generator = b.dataset.gen; saveOptions(); renderOptions();
+  });
+
+  // ---------- composer ----------
+  const input = $("input"), sendBtn = $("sendBtn");
+  function autoGrow() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 200) + "px";
+    sendBtn.disabled = busy || !input.value.trim();
+  }
+  input.addEventListener("input", autoGrow);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
+  });
+  $("composer").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
+  function submit() {
+    const q = input.value.trim();
+    if (!q || busy) return;
+    input.value = ""; autoGrow();
+    ask(q);
+  }
+
+  // ---------- rendering helpers ----------
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function questionWords(q) {
+    return [...new Set((q.toLowerCase().match(/[a-z0-9]+/g) || []).filter((w) => w.length > 2 && !STOP.has(w)))];
+  }
+  function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  // Escape first, then wrap question words in <mark>; entities are never touched.
+  function highlight(text, words) {
+    const escaped = escapeHtml(text);
+    if (!words.length) return escaped;
+    const re = new RegExp("\\b(" + words.map(escapeRe).join("|") + ")\\w*", "gi");
+    return escaped.split(/(&[a-z0-9#]+;)/i)
+      .map((part) => (/^&[a-z0-9#]+;$/i.test(part) ? part : part.replace(re, "<mark>$&</mark>")))
+      .join("");
+  }
+  function scoreBar(score, threshold, big) {
+    const bar = el("div", "bar");
+    const fill = el("div", "fill");
+    fill.style.width = Math.max(2, Math.min(100, score * 100)) + "%";
+    bar.append(fill);
+    if (threshold !== null && threshold !== undefined) {
+      if (score < threshold) bar.classList.add("low");
+      const m = el("div", "marker");
+      m.style.left = "calc(" + Math.min(100, threshold * 100) + "% - 1px)";
+      m.title = "Threshold " + threshold.toFixed(2);
+      bar.append(m);
+    }
+    if (!big) bar.setAttribute("aria-hidden", "true");
+    return bar;
+  }
+  function scrollToEnd() { window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); }
+
+  function renderAnswer(r, question) {
+    const grounded = r.supported;
+    const card = el("article", "card " + (grounded ? "grounded" : "refused"));
+    card.setAttribute("aria-label", grounded ? "Grounded answer" : "Refusal");
+
+    // Status + confidence
+    const top = el("div", "card-top");
+    top.append(el("span", "status " + (grounded ? "ok" : "warn"), grounded ? "Grounded ✓" : "Not in docs"));
+    if (!grounded && r.refusal_reason) top.append(el("span", "reason", REASONS[r.refusal_reason] || r.refusal_reason));
+    const thr = r.options_applied.confidence_threshold;
+    const conf = el("div", "conf");
+    conf.append(el("span", "", "Confidence"));
+    const bar = scoreBar(r.top_score, thr.enabled ? thr.value : null, true);
+    bar.setAttribute("role", "meter");
+    bar.setAttribute("aria-label", "Top retrieval score");
+    bar.setAttribute("aria-valuemin", "0"); bar.setAttribute("aria-valuemax", "1");
+    bar.setAttribute("aria-valuenow", String(r.top_score));
+    conf.append(bar, el("span", "", r.top_score.toFixed(2)));
+    top.append(conf);
+    card.append(top);
+
+    // Answer text: always textContent
+    card.append(el("p", "answer", r.answer));
+
+    // Sources
+    const words = questionWords(question);
+    const sources = el("details");
+    sources.append(el("summary", "", "Sources (" + r.retrieved_chunks.length + ")"));
+    const rows = {};
+    for (const c of r.retrieved_chunks) {
+      const row = el("div", "src" + (c.cited ? " cited" : ""));
+      const head = el("div", "src-head");
+      head.append(el("span", "id", c.doc_id + " · " + c.chunk_id), scoreBar(c.score, null, false),
+        el("span", "", c.score.toFixed(3)));
+      if (c.cited) head.append(el("span", "tag", "cited"));
+      const body = el("p", "src-text");
+      body.innerHTML = highlight(c.text, words);
+      row.append(head, body);
+      sources.append(row);
+      (rows[c.doc_id] = rows[c.doc_id] || []).push({ row, cited: c.cited });
+    }
+
+    // Citation chips
+    if (r.citations.length) {
+      const chips = el("div", "chips");
+      for (const doc of r.citations) {
+        const chip = el("button", "chip cite");
+        chip.type = "button";
+        chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+        chip.append(document.createTextNode(doc));
+        chip.setAttribute("aria-label", "Show source " + doc);
+        chip.addEventListener("click", () => {
+          sources.open = true;
+          const targets = (rows[doc] || []).filter((x) => x.cited);
+          (targets.length ? targets : rows[doc] || []).forEach((x, i) => {
+            x.row.classList.add("flash");
+            if (i === 0) x.row.scrollIntoView({ behavior: "smooth", block: "center" });
+            setTimeout(() => x.row.classList.remove("flash"), 1600);
+          });
+        });
+        chips.append(chip);
+      }
+      card.append(chips);
+    }
+    card.append(sources);
+
+    // Checks
+    const checks = el("details");
+    const passed = r.checks.filter((c) => c.passed).length;
+    checks.append(el("summary", "", "Checks (" + passed + "/" + r.checks.length + " passed)"));
+    const list = el("ul", "checks");
+    for (const c of r.checks) {
+      const li = el("li");
+      li.append(el("span", c.passed ? "ok" : "bad", c.passed ? "✓" : "✕"),
+        el("span", "", CHECK_LABELS[c.name] || c.name), el("span", "detail", "— " + c.detail));
+      list.append(li);
+    }
+    checks.append(list);
+    card.append(checks);
+
+    // Footer
+    const foot = el("div", "footer");
+    foot.append(el("span", "", r.generator), el("span", "", "·"),
+      el("span", "", "length " + (r.options_applied.length || "off")), el("span", "", "·"),
+      el("span", "", Math.round(r.latency_ms) + " ms"));
+    if (r.was_trimmed) foot.append(el("span", "trim", "trimmed"));
+    const copy = el("button", "icon-btn copy");
+    copy.type = "button";
+    copy.setAttribute("aria-label", "Copy answer");
+    copy.title = "Copy answer";
+    copy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    copy.addEventListener("click", async () => {
+      const text = r.answer + (r.citations.length ? "\n\nSources: " + r.citations.join(", ") : "");
+      try { await navigator.clipboard.writeText(text); copy.title = "Copied"; copy.setAttribute("aria-label", "Copied"); }
+      catch (e) { copy.title = "Copy failed"; }
+      setTimeout(() => { copy.title = "Copy answer"; copy.setAttribute("aria-label", "Copy answer"); }, 1500);
+    });
+    foot.append(copy);
+    card.append(foot);
+    return card;
+  }
+
+  // ---------- ask ----------
+  async function ask(question) {
+    $("empty").hidden = true;
+    const thread = $("thread");
+    thread.append(el("div", "user-msg", question));
+    const slot = el("div");
+    const typing = el("div", "card typing");
+    typing.setAttribute("aria-label", "Assistant is typing");
+    typing.append(el("span"), el("span"), el("span"));
+    slot.append(typing);
+    thread.append(slot);
+    scrollToEnd();
+    busy = true; autoGrow();
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, options: requestOptions() }),
+      });
+      if (!res.ok) {
+        let msg = "Request failed (" + res.status + ")";
+        try { const j = await res.json(); if (j.detail) msg += ": " + (typeof j.detail === "string" ? j.detail : j.detail.map((d) => d.msg).join("; ")); } catch (e) {}
+        throw new Error(msg);
+      }
+      slot.replaceChildren(renderAnswer(await res.json(), question));
+    } catch (err) {
+      const card = el("div", "card error-card");
+      card.append(el("span", "", err.message || "Something went wrong."));
+      const retry = el("button", "btn", "Retry");
+      retry.type = "button";
+      retry.addEventListener("click", () => { slot.previousElementSibling.remove(); slot.remove(); ask(question); });
+      card.append(retry);
+      slot.replaceChildren(card);
+    } finally {
+      busy = false; autoGrow();
+      scrollToEnd();
+    }
+  }
+
+  // ---------- boot ----------
+  async function boot() {
+    try {
+      const res = await fetch("/api/config");
+      if (!res.ok) throw new Error(String(res.status));
+      cfg = await res.json();
+      $("kbDot").className = "dot ok";
+      $("kbText").textContent = cfg.kb.docs + " docs · " + cfg.kb.chunks + " chunks";
+      $("kbPill").title = cfg.kb.doc_ids.join("\n");
+      const sug = $("suggestions");
+      for (const q of cfg.sample_questions) {
+        const b = el("button", "suggestion", q);
+        b.type = "button";
+        b.addEventListener("click", () => ask(q));
+        sug.append(b);
+      }
+      $("thrSlider").min = cfg.threshold_range[0];
+      $("thrSlider").max = cfg.threshold_range[1];
+    } catch (e) {
+      $("kbDot").className = "dot bad";
+      $("kbText").textContent = "Knowledge base unavailable";
+    }
+    loadOptions();
+    renderOptions();
+    autoGrow();
+    input.focus();
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

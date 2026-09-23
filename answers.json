@@ -1,0 +1,177 @@
+[
+  {
+    "question_id": "q1",
+    "answer": "Users can request up to 3 password resets per hour. Users can request a password reset from the sign-in page by selecting \"Forgot password\" and entering the email address on the account.",
+    "citations": [
+      "auth_password_reset.md"
+    ],
+    "cited_chunks": [
+      "auth_password_reset_1"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "auth_password_reset_1",
+      "auth_password_reset_2",
+      "auth_password_reset_4",
+      "account_2fa_2"
+    ],
+    "generator": "extractive"
+  },
+  {
+    "question_id": "q2",
+    "answer": "The API rate limit for the Enterprise plan is 1,000 requests per minute. The API rate limit for the Standard plan is 100 requests per minute.",
+    "citations": [
+      "api_rate_limits.md"
+    ],
+    "cited_chunks": [
+      "api_rate_limits_1"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "api_rate_limits_1",
+      "api_rate_limits_3",
+      "api_rate_limits_0",
+      "api_rate_limits_2"
+    ],
+    "generator": "extractive"
+  },
+  {
+    "question_id": "q3",
+    "answer": "KYC review is completed within 24 hours of submission.",
+    "citations": [
+      "kyc_verification.md"
+    ],
+    "cited_chunks": [
+      "kyc_verification_2"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "kyc_verification_2",
+      "kyc_verification_3",
+      "kyc_verification_0",
+      "withdrawals_4"
+    ],
+    "generator": "extractive"
+  },
+  {
+    "question_id": "q4",
+    "answer": "The daily withdrawal limit is $10,000. The limit covers the total of all withdrawal requests made by an account in a single calendar day.",
+    "citations": [
+      "withdrawals.md"
+    ],
+    "cited_chunks": [
+      "withdrawals_2"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "withdrawals_2",
+      "api_rate_limits_1",
+      "withdrawals_4",
+      "api_rate_limits_2"
+    ],
+    "generator": "extractive"
+  },
+  {
+    "question_id": "q5",
+    "answer": "For P1 incidents, the on-call engineer must respond within 15 minutes. For P2 incidents, the on-call engineer must respond within 1 hour.",
+    "citations": [
+      "incident_escalation.md"
+    ],
+    "cited_chunks": [
+      "incident_escalation_2"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "incident_escalation_2",
+      "incident_escalation_4",
+      "incident_escalation_1",
+      "incident_escalation_3"
+    ],
+    "generator": "extractive"
+  },
+  {
+    "question_id": "q6",
+    "answer": "Clients that exceed the API rate limit receive an HTTP 429 Too Many Requests response with a Retry-After header. The API rate limit for the Enterprise plan is 1,000 requests per minute.",
+    "citations": [
+      "api_rate_limits.md"
+    ],
+    "cited_chunks": [
+      "api_rate_limits_3",
+      "api_rate_limits_1"
+    ],
+    "supported": true,
+    "refusal_reason": null,
+    "retrieved_sources": [
+      "api_rate_limits_1",
+      "api_rate_limits_3",
+      "api_rate_limits_0",
+      "api_rate_limits_2"
+    ],
+    "generator": "extractive"
+  },
+  {
+    "question_id": "q7",
+    "answer": "I can't answer this from the available documentation. Not covered: VIP.",
+    "citations": [],
+    "cited_chunks": [],
+    "supported": false,
+    "refusal_reason": "key_term_not_in_docs",
+    "retrieved_sources": [
+      "account_2fa_3",
+      "withdrawals_4",
+      "kyc_verification_4",
+      "account_2fa_4"
+    ],
+    "generator": "extractive"
+  },
+  {
+    "question_id": "q8",
+    "answer": "I can't answer this from the available documentation. Not covered: GraphQL.",
+    "citations": [],
+    "cited_chunks": [],
+    "supported": false,
+    "refusal_reason": "key_term_not_in_docs",
+    "retrieved_sources": [
+      "api_rate_limits_1",
+      "api_rate_limits_3",
+      "api_rate_limits_0",
+      "api_rate_limits_2"
+    ],
+    "generator": "extractive"
+  },
+  {
+    "question_id": "q9",
+    "answer": "I can't answer this from the available documentation. Not covered: long, crypto.",
+    "citations": [],
+    "cited_chunks": [],
+    "supported": false,
+    "refusal_reason": "insufficient_coverage",
+    "retrieved_sources": [
+      "withdrawals_4",
+      "withdrawals_1",
+      "auth_password_reset_3",
+      "account_2fa_1"
+    ],
+    "generator": "extractive"
+  },
+  {
+    "question_id": "q10",
+    "answer": "I can't answer this from the available documentation. Not covered: credit.",
+    "citations": [],
+    "cited_chunks": [],
+    "supported": false,
+    "refusal_reason": "insufficient_coverage",
+    "retrieved_sources": [
+      "kyc_verification_2",
+      "incident_escalation_1",
+      "api_rate_limits_2",
+      "withdrawals_0"
+    ],
+    "generator": "extractive"
+  }
+]

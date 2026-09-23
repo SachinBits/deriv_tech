@@ -1,0 +1,177 @@
+# Grounded Support QA (local RAG)
+
+Answers support questions **only** from the markdown docs in `docs/`, cites the chunks it used, and refuses when the docs don't support an answer. It runs fully offline by default (TF-IDF retrieval plus an extractive generator). Claude is optional.
+
+## Architecture
+
+```
+ docs/*.md ──► ingest ──► retrieve ──► gate ──► prompt ──► generate ──► validate ──► record
+              (chunk)    (TF-IDF,    (score +   (fills     (extractive  (V1–V6,
+                          top-k)      key-term)  template)  or Claude)   fail-closed)
+                                        │ refuse                              │ refuse / trim
+                                        └───────────► canonical refusal ◄─────┘
+```
+
+`rag/pipeline.answer_question()` runs five explicit steps: **retrieve → gate → prompt → generate → validate**. If the gate refuses, the prompt and generate steps are skipped.
+
+```
+docs/                 6 product docs (knowledge base)
+questions.json        eval set: [{id, question, expected_behavior?, expected_doc?}]
+prompts/answer.txt    Claude prompt template ({question}, {context}, {length_instruction})
+rag/config.py         constants and calibrated thresholds
+rag/obs.py            JSONL stage logging → logs/pipeline.jsonl
+rag/ingest.py         load_docs(), chunk()  (split on headings, pack to ≤400 chars)
+rag/retrieve.py       Index.build() / Index.search()
+rag/gate.py           evidence_gate(): confidence threshold (optional) + key-term check
+rag/prompt.py         build_prompt()
+rag/generate.py       ExtractiveGenerator, ClaudeGenerator, get_generator()
+rag/validate.py       validate(): V1–V6
+rag/controls.py       AskOptions, LENGTH_PRESETS, apply_length()
+rag/evalset.py        load_questions() (a missing file is tolerated), expected_supported()
+rag/pipeline.py       answer_question(): the orchestrator
+run_pipeline.py       batch eval → retrieval_results.json, answers.json, validation_report.json
+app.py                one-question CLI
+server.py             FastAPI: /api/config, /api/ask (+ /ask alias), /api/health, UI at /
+web/index.html        single-file chat UI (vanilla JS, no build step)
+tests/test_pipeline.py
+```
+
+## Setup
+
+```bash
+pip install -r requirements.txt
+python run_pipeline.py                      # regenerates the 3 JSON artifacts
+python app.py --question "How long do bank transfer withdrawals take?"
+pytest -q
+```
+
+Flags shared by `run_pipeline.py` and `app.py`:
+- `--generator auto|extractive|claude`
+- `--length short|medium|detailed|off`
+- `--no-threshold`
+- `--min-score 0.10`
+- `--k 4`
+- `--docs DIR`
+
+`run_pipeline.py` also takes `--questions PATH`. `app.py` also takes `--show-prompt` and `--verbose`.
+
+### Run the UI
+
+```bash
+python server.py        # then open http://localhost:8000
+```
+
+> _Screenshot placeholder: add `screenshot.png` of the chat UI (a grounded q1 answer and a q7 refusal)._
+
+## Retrieval
+
+- Each doc is split on markdown headings. Paragraphs, then sentences, are packed into chunks of at most 400 characters, and every chunk keeps its `doc_id`, `chunk_id` and `heading`.
+- A `TfidfVectorizer(ngram_range=(1,2), stop_words="english", sublinear_tf=True)` is fitted on the chunk text.
+- A question is vectorised the same way. Cosine similarity (`linear_kernel` on L2-normalised TF-IDF vectors) ranks the chunks, and the top-k (default 4) are returned with scores.
+- Building the index takes milliseconds, so every entry point rebuilds it at startup.
+
+## Grounding and refusal
+
+There are three independent layers. None of them can turn a refusal into an answer.
+
+1. **Evidence gate**, before generation and deterministic:
+   - **Rule A (optional):** refuse if the top retrieval score is below the confidence threshold (`low_retrieval_score`).
+   - **Rule B (always on):** refuse if a key term in the question is missing from the retrieved text (`key_term_not_in_docs`). Key terms are acronyms (VIP, KYC), mixed-case tokens (GraphQL) and tokens containing digits (P1).
+2. **Generator support:**
+   - The extractive generator refuses when no sentence covers at least `MIN_COVERAGE` of the question's content tokens (`insufficient_coverage`).
+   - Claude is instructed to set `supported=false` itself (`model_unsupported`), and any API or JSON error fails closed.
+3. **Validator** (`rag/validate.py`), deterministic and fail-closed:
+
+| Rule | Check | On failure |
+|---|---|---|
+| V1 `non_empty` | the answer is not blank | refuse (`validation_failed`) |
+| V2 `supported_has_citation` | a supported answer has ≥1 citation | refuse |
+| V3 `citations_in_retrieved` | every cited chunk was retrieved; invalid ones are dropped | refuse if none remain |
+| V4 `unsupported_marked` | an unsupported answer starts with the refusal sentence | the refusal sentence is prefixed |
+| V5 `numbers_grounded` | every number in the answer appears in the cited chunks | refuse |
+| V6 `length_within_limit` | only when a length mode is set | trim at a sentence boundary (`detail="trimmed"`), not a refusal |
+
+### Calibration
+
+I ran `python run_pipeline.py --generator extractive` and it scored 10/10 refusal accuracy at the spec defaults, so I kept **`MIN_SCORE = 0.10`** and **`MIN_COVERAGE = 0.6`**. Per-question signals (from `validation_report.json`):
+
+| id | expected | top score | best coverage | outcome |
+|---|---|---|---|---|
+| q1–q6 | answerable | 0.351–0.593 | 0.75–1.00 | answered, cited |
+| q7 | unanswerable | 0.399 | – | refused: key term `VIP` |
+| q8 | partial | 0.422 | – | refused: key term `GraphQL` |
+| q9 | partial | 0.164 | 0.33 | refused: coverage (`crypto` not in docs) |
+| q10 | unanswerable | 0.166 | 0.50 | refused: coverage (`service credits` not in docs) |
+
+Reasoning:
+- **Coverage.** The coverage threshold sits between the highest unanswerable coverage (0.50) and the lowest answerable coverage (0.75), so 0.6 has margin on both sides.
+- **Threshold on this set.** The retrieval threshold never decides anything here. Every question scores above 0.10, and q7/q8 score as high as the answerable questions because they share words with real docs ("identity verification", "rate limit"). That is exactly why the key-term gate exists. A threshold of about 0.2 would also separate the classes (answerable ≥ 0.35; q9/q10 ≈ 0.165), but I didn't raise it because the default already reaches 10/10.
+- **One extra stop list.** sklearn's English stop list omits "does", so the coverage tokeniser drops `does/did/doing`. This is generic and not tied to any question.
+
+## Stretch item: user-controllable answer controls
+
+This is one improvement with two knobs. Both are optional per request (`AskOptions` in `rag/controls.py`), exposed through the CLI flags, the API body and the UI's "+" menu.
+
+**Knob 1: answer length** (`short` 1 sentence/40 words · `medium` 2/80 · `detailed` 4/160 · off)
+- **Why:** support users want terse answers and reviewers want detail.
+- **Extractive generator:** the primary sentence must still meet `MIN_COVERAGE`. Extra sentences need coverage ≥ 0.3 and are ranked by TF-IDF similarity. Citations are recomputed from the sentences kept.
+- **Claude:** gets a `{length_instruction}` and a preset `max_tokens`.
+- `apply_length()` trims deterministically at sentence boundaries before validation, so V5 checks numbers on the final text.
+- Sentences are verbatim and trimming is deterministic, so answers stay grounded at every length.
+
+**Knob 2: confidence threshold** (on/off, 0.00–0.50)
+- **Why:** it's cheap and deterministic, and it stops the system answering from weak matches.
+
+**Why both are optional:**
+- Different consumers need different trade-offs. The UI user may want a lower threshold or longer answers; the batch eval pins the defaults.
+- The key-term check and the coverage check **stay on regardless**, so turning the threshold off never removes grounding. The ablation below shows this.
+
+**Ablation** (`summary.ablation` in `validation_report.json`, extractive generator, 10 questions):
+
+| Setting | Refusal accuracy | Refusals by reason |
+|---|---|---|
+| threshold on (0.10) | **10/10** | 2 key-term, 2 coverage |
+| threshold off | **10/10** | 2 key-term, 2 coverage |
+
+| Length | Avg words (6 answered) | Validation pass rate |
+|---|---|---|
+| short | 11.3 | 1.0 |
+| medium (default) | 24.2 | 1.0 |
+| detailed | 46.3 | 1.0 |
+
+On this eval set the threshold adds no accuracy, because the always-on safeguards already catch all four unanswerable questions. It is defence in depth for corpora where a question shares no key term with the docs and its words happen to cover a single sentence.
+
+## Optional Claude mode
+
+```bash
+# see .env.example; the app reads real environment variables (it does not load .env)
+export ANTHROPIC_API_KEY=sk-ant-...
+export CLAUDE_MODEL=claude-haiku-4-5-20251001   # optional; this is the default
+python run_pipeline.py                          # auto → Claude when the key is set
+python app.py --generator claude --question "What is the daily withdrawal limit?"
+```
+
+- `anthropic` is imported lazily inside `ClaudeGenerator`, so offline mode works without the package.
+- The model must return JSON only (`{"answer", "cited_chunk_ids", "supported"}`) at temperature 0. Any API, parse or schema error returns the refusal.
+- The same gate and validator apply to Claude's output.
+
+## Observability
+
+Every stage appends a JSON line to `logs/pipeline.jsonl`, and each line has `ts`, `run_id` and `stage`:
+- `ingest`, `retrieve`, `gate`, `prompt`, `generate`, `validate`;
+- `eval_run` and `eval_summary` from `run_pipeline.py`;
+- `http` and `api_ask` from the server.
+
+A batch run shares one `run_id`, and each API request gets its own.
+
+## Limitations
+
+- Lexical retrieval misses paraphrases ("sign-in" vs "login", "cash out" vs "withdraw").
+- Thresholds are tuned on 10 questions, which is too few to be a reliable estimate.
+- V5 only catches fabricated numbers. A wrong but number-free claim passes the validator if its citations are valid.
+- Extractive answers are verbatim sentences: grounded, but sometimes stilted or missing context from the neighbouring sentence.
+- The lexical key-term gate may refuse valid paraphrased questions on new corpora (e.g. an acronym that the docs spell out). This fails safe: the result is a refusal, never a fabrication.
+
+## Production path
+
+Put Supabase Postgres with **pgvector** (embeddings) plus **full-text search** (`tsvector`) behind the same `Index.search()` interface, and fuse the two ranked lists with Reciprocal Rank Fusion. Hybrid search fixes the paraphrase gap while keeping exact-term recall for acronyms, IDs and numbers. The gate, prompt, generators and validator stay unchanged.
