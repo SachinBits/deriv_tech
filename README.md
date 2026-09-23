@@ -1,15 +1,22 @@
 # Grounded Support QA (local RAG)
 
-Answers support questions **only** from the markdown docs in `docs/`, cites the chunks it used, and refuses when the docs don't support an answer. It runs fully offline by default (TF-IDF retrieval plus an extractive generator). Claude is optional.
+Answers support questions **only** from a local knowledge base, cites the chunks it used, and refuses when the docs don't support an answer. It runs fully offline by default (TF-IDF retrieval plus an extractive generator). Claude is an optional, swappable generator behind the same interface.
+
+- **Knowledge base:** the 6 product docs in `docs/`. When running locally, the web UI also accepts your own `.md`, `.txt` and `.pdf` files (see [Try your own docs](#try-your-own-docs-local)).
+- **Eval:** `run_pipeline.py` scores 10 questions (6 answerable, 4 not) and writes 3 JSON artifacts: 10/10 refusal accuracy and a 1.0 validation pass rate in both extractive and Claude mode.
+- **Interfaces:** a CLI (`app.py`), a batch eval (`run_pipeline.py`), a FastAPI server (`server.py`) and a single-file chat UI (`web/index.html`).
 
 ## Architecture
 
 ```
- docs/*.md ──► ingest ──► retrieve ──► gate ──► prompt ──► generate ──► validate ──► record
-              (chunk)    (TF-IDF,    (score +   (fills     (extractive  (V1–V6,
-                          top-k)      key-term)  template)  or Claude)   fail-closed)
-                                        │ refuse                              │ refuse / trim
-                                        └───────────► canonical refusal ◄─────┘
+ docs/ (+ uploads/ in the local server)
+     │
+     ▼
+   ingest ──► retrieve ──► gate ──► prompt ──► generate ──► validate ──► record
+  (chunk)    (TF-IDF,     (score +   (fills     (extractive  (V1–V6,
+              top-k)       key-term)  template)  or Claude)   fail-closed)
+                             │ refuse                            │ refuse / trim
+                             └──────────► canonical refusal ◄────┘
 ```
 
 `rag/pipeline.answer_question()` runs five explicit steps: **retrieve → gate → prompt → generate → validate**. If the gate refuses, the prompt and generate steps are skipped.
@@ -33,17 +40,23 @@ rag/kb.py             server knowledge base: docs/ + uploads/, thread-safe rebui
 rag/suggest.py        self-verified suggested questions for uploaded docs
 rag/sinks.py          optional Supabase sink (query_logs, eval_runs, chunks)
 run_pipeline.py       batch eval → retrieval_results.json, answers.json, validation_report.json
+runs/claude/          the same 3 artifacts from a live Claude (Haiku 4.5) run
 app.py                one-question CLI
 server.py             FastAPI: /api/config, /api/ask (+ /ask alias), /api/health, /api/docs*, UI at /
 web/index.html        single-file chat UI (vanilla JS, no build step)
-tests/test_pipeline.py
+tests/test_pipeline.py  offline test suite (see Tests)
+uploads/              local uploads (git-ignored, created on first upload)
+.env.example          environment variable template
 ```
 
 ## Setup
 
+Python 3.10+ (tested on 3.13).
+
 ```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python run_pipeline.py                      # regenerates the 3 JSON artifacts
+python run_pipeline.py --generator extractive   # regenerates the 3 JSON artifacts (offline)
 python app.py --question "How long do bank transfer withdrawals take?"
 pytest -q
 ```
@@ -68,6 +81,9 @@ Flags shared by `run_pipeline.py` and `app.py`:
 | `CLAUDE_MODEL` | Claude model id (default `claude-haiku-4-5-20251001`). |
 | `SUPABASE_URL` | Enables the Supabase sink, together with a key. |
 | `SUPABASE_SECRET_KEY` **or** `SUPABASE_SERVICE_KEY` | Either name is accepted (the secret key name is checked second). |
+| `PORT` / `HOST` | Server bind address (default `127.0.0.1:8000`). |
+| `VERCEL` | When set, all upload endpoints return 403 and the UI hides upload. |
+| `RAG_DOCS_DIR`, `RAG_UPLOADS_DIR`, `RAG_QUESTIONS`, `RAG_LOG_PATH` | Override the server's docs dir, uploads dir, questions file and log file. |
 
 The committed artifacts (`retrieval_results.json`, `answers.json`, `validation_report.json`) were generated offline with `python run_pipeline.py --generator extractive`.
 
@@ -75,7 +91,10 @@ The committed artifacts (`retrieval_results.json`, `answers.json`, `validation_r
 
 ```bash
 python server.py        # then open http://localhost:8000
+PORT=8001 python server.py   # if port 8000 is taken ("address already in use")
 ```
+
+The server doesn't auto-reload. Restart it after pulling changes, then hard-reload the page (Cmd+Shift+R).
 
 > _Screenshot placeholder: add `screenshot.png` of the chat UI (a grounded q1 answer and a q7 refusal)._
 
@@ -94,7 +113,7 @@ There are three independent layers. None of them can turn a refusal into an answ
    - **Rule A (optional):** refuse if the top retrieval score is below the confidence threshold (`low_retrieval_score`).
    - **Rule B (always on):** refuse if a key term in the question is missing from the retrieved text (`key_term_not_in_docs`). Key terms are acronyms (VIP, KYC), mixed-case tokens (GraphQL) and tokens containing digits (P1).
 2. **Generator support:**
-   - The extractive generator refuses when no sentence covers at least `MIN_COVERAGE` of the question's content tokens (`insufficient_coverage`).
+   - The extractive generator refuses when no sentence covers at least `MIN_COVERAGE` of the question's content tokens (`insufficient_coverage`). A sentence only counts as a candidate if it has ≥ 4 words and adds a content word or number the question lacks, so a fragment that merely repeats the question is never an answer.
    - Claude is instructed to set `supported=false` itself (`model_unsupported`), and any API or JSON error fails closed.
 3. **Validator** (`rag/validate.py`), deterministic and fail-closed:
 
@@ -203,18 +222,82 @@ Both modes refuse q7/q8 at the key-term gate, before any generation. Claude's re
 
 The first row is the paraphrase gap in the extractive generator: retrieval found the right chunk, but word-overlap coverage can't see that "stops working" means "expire". Claude can, and the validator still checks its citation and its "30". The second row is the paraphrase gap in *retrieval*: "log in again" and "wrong passwords" barely overlap with "account locks … failed login attempts". Neither generator ever sees the right evidence, so both refuse. That fails safe, and it's the case hybrid or vector search (see Production path) would fix.
 
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/` | the chat UI |
+| `GET` | `/api/health` | `{"status": "ok"}` |
+| `GET` | `/api/config` | defaults, length presets, generator availability, KB counts, sample questions, `upload_enabled`, `upload_limits` |
+| `POST` | `/api/ask` (alias `/ask`) | body `{question (1–500 chars), options?: AskOptions}`; returns the pipeline record plus `retrieved_chunks` (with `cited`), `checks`, `citation_sources`; 422 on invalid input |
+| `GET` | `/api/docs` | every doc with `source`, `chunks`, `chars`, `added_at` (local only) |
+| `POST` | `/api/docs` | multipart upload, up to 5 files (local only) |
+| `DELETE` | `/api/docs/{doc_id}` | delete an upload; base docs → 403 (local only) |
+| `GET` | `/api/docs/{doc_id}/chunks` | a doc's chunks (local only) |
+
+`AskOptions` has these fields:
+- `confidence_threshold_enabled` (default `true`);
+- `confidence_threshold` (0.0–0.5, default 0.10);
+- `length` (`short` · `medium` · `detailed` · `null`, default `medium`);
+- `generator` (`auto` · `extractive` · `claude`);
+- `doc_ids` (scope retrieval to these docs; `null` means all).
+
+The "local only" endpoints return 403 when `VERCEL` is set.
+
+## Tests
+
+`pytest -q` runs 65 offline tests: no network and no API key. They cover:
+- **Base spec:**
+  - chunking;
+  - retrieval: the expected doc is in the top 3;
+  - all unanswerable and partial questions are refused;
+  - the validator fails closed (no citation, a citation that wasn't retrieved, an invented number).
+- **Controls:**
+  - length presets;
+  - threshold toggle;
+  - safeguards stay on with the threshold off;
+  - numbers in answers are verbatim.
+- **API:** config, ask and the `/ask` alias, invalid input → 422, Claude unavailable → 400.
+- **Supabase sink** (stubbed network): `apikey` header with no Bearer, chunk upsert, failures ignored.
+- **Claude path** (stubbed client):
+  - grounded answer passes;
+  - invented number → V5 refusal;
+  - bad JSON, API error or a foreign citation → refusal;
+  - the request arguments match the installed SDK's signature.
+- **Uploads:**
+  - `.md` and `.pdf` ingest;
+  - 415 / 413 / 409 / 422 errors;
+  - path traversal is sanitised;
+  - 403 on Vercel;
+  - scoped search;
+  - delete;
+  - suggested questions pass when re-asked;
+  - the eval is identical with files in `uploads/`.
+- **Regressions:**
+  - fragmented PDF text is reflowed;
+  - a question-echo fragment is never an answer;
+  - a sentence whose only new information is a number is kept.
+
 ## Observability
 
 Every stage appends a JSON line to `logs/pipeline.jsonl`, and each line has `ts`, `run_id` and `stage`:
 - `ingest`, `retrieve`, `gate`, `prompt`, `generate`, `validate`;
+- `generate_error` (a Claude call that failed closed);
 - `eval_run` and `eval_summary` from `run_pipeline.py`;
-- `http` and `api_ask` from the server.
+- `http`, `api_ask` and `server_start` from the server;
+- `upload` (with `suggestions_kept/tried`), `upload_rejected`, `upload_delete` and `suggest_error`;
+- `sink` (every Supabase write, with its status).
 
 A batch run shares one `run_id`, and each API request gets its own.
 
 ## Optional Supabase sink
 
-If `SUPABASE_URL` and a key (`SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_KEY`) are set, results are persisted over PostgREST to the tables created by migration `001_init_support_qa`. The code never runs migrations.
+If `SUPABASE_URL` and a key (`SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_KEY`) are set, results are persisted over PostgREST to the tables created by migration `001_init_support_qa`. The code never runs migrations. The migration SQL isn't in this repo yet.
+
+The tables are:
+- `query_logs`: question, answer, supported, refusal reason, citations, retrieved sources, top score, validation result, generator, options, latency;
+- `eval_runs`: run id, generator, options, summary;
+- `chunks`: `chunk_id` primary key, doc, heading, index, content, content hash, plus `embedding vector(384)` and `fts tsvector` for the production path.
 
 | Where | Table | What |
 |---|---|---|
@@ -260,7 +343,7 @@ Run `python server.py` and add your own `.md`, `.txt` or `.pdf` files. You can d
 2. **Each candidate is run through the full pipeline, scoped to that file.**
 3. Only questions that come back `supported=true` with `validation_passed` and a citation of that file are kept, up to 3.
 
-So the UI never suggests a question the system would refuse. The upload is logged as `stage=upload` with `suggestions_kept/tried` (e.g. 3/7 for the example above).
+So the UI never suggests a question the system would refuse. The upload is logged as `stage=upload` with `suggestions_kept/tried`. For example, a small pricing FAQ kept 3 of 7 candidates ("How much does the Starter plan cost?", …). If nothing passes, the card says so rather than suggesting an unverified question.
 
 **Why upload is disabled on Vercel:** serverless instances are stateless and short-lived, so a file saved on one instance is gone on the next request, which could land on another instance. With `VERCEL` set, every `/api/docs` endpoint returns 403, `upload_enabled` is false, and the UI hides all upload entry points. The production path is to persist uploads to the Supabase `chunks` table and retrieve from there behind the same `Index.search()` interface. The sink already writes uploaded chunks there when configured; retrieving from it is the remaining step.
 
@@ -270,7 +353,9 @@ So the UI never suggests a question the system would refuse. The upload is logge
 - Thresholds are tuned on 10 questions, which is too few to be a reliable estimate.
 - V5 only catches fabricated numbers. A wrong but number-free claim passes the validator if its citations are valid.
 - Extractive answers are verbatim sentences: grounded, but sometimes stilted or missing context from the neighbouring sentence. A candidate sentence must have ≥ 4 words and add a content word or number the question lacks. Without that rule, a fragment such as a lone "AITF-14" line in a PDF would "cover" *What is AITF-14?* completely and pass every check while saying nothing.
-- Uploads rebuild the whole TF-IDF index, and IDF shifts with each new doc. Fine for dozens of docs, not thousands. Deterministic suggestion templates only cover "X is/costs/takes …" style facts; other docs may get fewer (or no) suggestions, but never unverified ones.
+- Uploads rebuild the whole TF-IDF index, and IDF shifts with each new doc. Fine for dozens of docs, not thousands.
+- Deterministic suggestion templates only cover sentences like "X is/costs/takes …" and repeated IDs ("AITF-14"). Other docs may get fewer suggestions, or none, but never unverified ones.
+- For messy sources such as slide decks and code-heavy PDFs, extractive answers can include header text around the relevant sentence. Claude mode writes cleaner answers from the same evidence, under the same validator.
 - The lexical key-term gate may refuse valid paraphrased questions on new corpora (e.g. an acronym that the docs spell out). This fails safe: the result is a refusal, never a fabrication.
 
 ## Production path
