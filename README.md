@@ -7,6 +7,7 @@ Answers support questions **only** from a local knowledge base, cites the chunks
 - **Knowledge base:** the 6 product docs in `docs/`. When running locally, the web UI also accepts your own `.md`, `.txt` and `.pdf` files (see [Try your own docs](#try-your-own-docs-local)).
 - **Eval:** `run_pipeline.py` scores 10 questions (6 answerable, 4 not) and writes 3 JSON artifacts: 10/10 refusal accuracy and a 1.0 validation pass rate in both extractive and Claude mode.
 - **Interfaces:** a CLI (`app.py`), a batch eval (`run_pipeline.py`), a FastAPI server (`server.py`) and a single-file chat UI (`web/index.html`).
+- **Use it with Claude:** set `ANTHROPIC_API_KEY` and the same pipeline becomes RAG + Claude. The retrieved chunks are put into a prompt, Claude writes the answer with citations, and the validator checks Claude's answer before you see it. This works in the web UI, the CLI and the eval. See [Claude mode](#claude-mode-rag--claude).
 
 ## Architecture
 
@@ -180,15 +181,38 @@ This is one improvement with two knobs. Both are optional per request (`AskOptio
 
 On this eval set the threshold adds no accuracy, because the always-on safeguards already catch all four unanswerable questions. It is defence in depth for corpora where a question shares no key term with the docs and its words happen to cover a single sentence.
 
-## Optional Claude mode
+## Claude mode (RAG + Claude)
+
+Yes, this project can be used as a classic RAG + LLM app: retrieve from the docs, give the results to Claude, and let Claude write the answer. The only thing that changes is the generator. Retrieval, the evidence gate and the validator are the same as in offline mode.
+
+**How a Claude answer is produced:**
+1. **Retrieve:** TF-IDF finds the top 4 chunks for the question.
+2. **Gate:** if the evidence is too weak, or a key term (e.g. "GraphQL") isn't in the retrieved text, it refuses immediately, and Claude is never called.
+3. **Prompt:** the chunks are inserted into `prompts/answer.txt` as `[chunk_id] text`. Claude is told to answer only from them, cite the chunk IDs it used, and return JSON.
+4. **Generate:** Claude (Haiku 4.5 by default) writes the answer in its own words.
+5. **Validate:** the same V1–V6 checks run on Claude's answer. An invented number, a citation to a chunk that wasn't retrieved, or an unparseable reply turns the answer into a refusal.
+
+**Using Claude.** `.env` isn't auto-loaded, so export the key first:
 
 ```bash
-# .env is not auto-loaded: set -a; source .env; set +a
-export ANTHROPIC_API_KEY=sk-ant-...
-export CLAUDE_MODEL=claude-haiku-4-5-20251001   # optional; this is the default
-python run_pipeline.py                          # auto → Claude when the key is set
-python app.py --generator claude --question "What is the daily withdrawal limit?"
+set -a; source .env; set +a        # or: export ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+| Where | How |
+|---|---|
+| **Web UI** | `python server.py`, open http://localhost:8000, then **+ → Model → Claude**. Claude is selected by default when the key is set. The footer of every answer shows which generator produced it (`claude` or `extractive`). |
+| **Live demo** | https://deriv-tech.vercel.app already has Claude enabled and selected by default. |
+| **CLI** | `python app.py --generator claude --question "What is the daily withdrawal limit?"` (add `--show-prompt` to see exactly what Claude receives) |
+| **Eval** | `python run_pipeline.py --generator claude --out-dir runs/claude` |
+| **API** | `POST /api/ask` with `{"question": "...", "options": {"generator": "claude"}}` |
+
+With the key set, `--generator auto` (the default everywhere) picks Claude. Without it, everything falls back to the offline extractive generator. That's why a plain `python server.py` answers with "extractive" in the footer.
+
+`CLAUDE_MODEL` (default `claude-haiku-4-5-20251001`) selects the model.
+
+**Why offline is the default:** the brief required the system to run with no API key or network, and the committed eval artifacts must be reproducible byte for byte. The extractive generator provides that. Claude is the better writer, especially for reworded questions and messy sources (see [Extractive vs Claude](#extractive-vs-claude)), and it sits behind the same `generate()` interface, so switching is one option, not a code change.
+
+**Implementation notes:**
 
 - `anthropic` is imported lazily inside `ClaudeGenerator`, so offline mode works without the package.
 - The model must return JSON only (`{"answer", "cited_chunk_ids", "supported"}`). Temperature 0 is sent via `extra_body`, because `anthropic` 1.x removed the `temperature` keyword. Haiku 4.5 honours it; a model that rejects it returns a 400, which fails closed.
