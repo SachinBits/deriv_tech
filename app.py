@@ -7,6 +7,7 @@ from rag import config
 from rag.obs import new_run_id
 from rag.pipeline import answer_question
 from rag.retrieve import build_index
+from rag.sinks import get_sink
 from run_pipeline import add_option_flags, options_from_args
 
 
@@ -21,6 +22,7 @@ def main() -> None:
     new_run_id()
     index = build_index(config.root_path(args.docs))
     record = answer_question(args.question, index, None, options_from_args(args), args.k)
+    get_sink().log_query(record, client="cli")
 
     if args.show_prompt:
         print("----- prompt -----")

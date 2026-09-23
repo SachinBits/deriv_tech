@@ -1,10 +1,11 @@
 """FastAPI server: JSON API plus the single-page UI in web/."""
 
+import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -16,6 +17,7 @@ from rag.generate import claude_available, get_generator
 from rag.obs import log, new_run_id
 from rag.pipeline import answer_question
 from rag.retrieve import build_index
+from rag.sinks import get_sink
 
 WEB_DIR = config.root_path("web")
 
@@ -26,7 +28,11 @@ async def lifespan(app: FastAPI):
     app.state.index = build_index(docs_dir)
     app.state.questions = load_questions(
         config.root_path(os.environ.get("RAG_QUESTIONS", config.QUESTIONS_PATH)))
-    log("server_start", chunks=len(app.state.index.chunks), docs=len(app.state.index.doc_ids))
+    app.state.sink = get_sink()
+    if app.state.sink.enabled:
+        await asyncio.to_thread(app.state.sink.upsert_chunks, app.state.index.chunks)
+    log("server_start", chunks=len(app.state.index.chunks), docs=len(app.state.index.doc_ids),
+        supabase=app.state.sink.enabled)
     yield
 
 
@@ -82,7 +88,7 @@ def get_config(request: Request):
 
 @app.post("/api/ask")
 @app.post("/ask")
-def ask(body: AskRequest, request: Request):
+def ask(body: AskRequest, request: Request, background: BackgroundTasks):
     run_id = new_run_id()
     opts = body.options
     if opts.generator == "claude" and not claude_available():
@@ -97,6 +103,8 @@ def ask(body: AskRequest, request: Request):
     log("api_ask", question_chars=len(body.question), supported=record["supported"],
         refusal_reason=record["refusal_reason"], generator=record["generator"],
         options=record["options_applied"], latency_ms=record["latency_ms"])
+    if request.app.state.sink.enabled:  # after the response is sent, so latency is unaffected
+        background.add_task(request.app.state.sink.log_query, record, "api")
     return record
 
 

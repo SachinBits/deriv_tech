@@ -29,6 +29,7 @@ rag/validate.py       validate(): V1–V6
 rag/controls.py       AskOptions, LENGTH_PRESETS, apply_length()
 rag/evalset.py        load_questions() (a missing file is tolerated), expected_supported()
 rag/pipeline.py       answer_question(): the orchestrator
+rag/sinks.py          optional Supabase sink (query_logs, eval_runs, chunks)
 run_pipeline.py       batch eval → retrieval_results.json, answers.json, validation_report.json
 app.py                one-question CLI
 server.py             FastAPI: /api/config, /api/ask (+ /ask alias), /api/health, UI at /
@@ -163,6 +164,21 @@ Every stage appends a JSON line to `logs/pipeline.jsonl`, and each line has `ts`
 - `http` and `api_ask` from the server.
 
 A batch run shares one `run_id`, and each API request gets its own.
+
+## Optional Supabase sink
+
+If `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set (`SUPABASE_SECRET_KEY` also works), results are persisted over PostgREST to the tables created by migration `001_init_support_qa`. The code never runs migrations.
+
+| Where | Table | What |
+|---|---|---|
+| `server.py` (after the response is sent) | `query_logs` | one row per `/api/ask`, `client="api"` |
+| `app.py` | `query_logs` | `client="cli"` |
+| `run_pipeline.py` | `query_logs`, `eval_runs` | default-run answers (`client="eval"`) and the summary incl. ablation |
+| `server.py` startup, `run_pipeline.py` | `chunks` | upsert on `chunk_id` with `content_hash`; `embedding`/`fts` are left to the DB |
+
+- **Headers:** `apikey: <key>`, `Content-Type: application/json` and `Prefer: return=minimal`. There is **no** `Authorization: Bearer` header, because new `sb_secret_…` keys are not JWTs. The chunk upsert adds `resolution=merge-duplicates`.
+- **Failures:** writes are best-effort with a 5 s timeout. A failure is logged as `stage=sink` and never changes an answer.
+- **Loading `.env`:** the app doesn't load `.env` itself. Use `set -a; source .env; set +a` or export the variables. Note that this also exports `ANTHROPIC_API_KEY`, which makes `--generator auto` use Claude.
 
 ## Limitations
 

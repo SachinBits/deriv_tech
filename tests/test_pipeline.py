@@ -23,6 +23,8 @@ NOT_ANSWERABLE = [q for q in QUESTIONS if expected_supported(q["expected_behavio
 @pytest.fixture(autouse=True)
 def offline(monkeypatch, tmp_path):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    for var in ("SUPABASE_URL", "SUPABASE_SERVICE_KEY", "SUPABASE_SECRET_KEY"):
+        monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("RAG_LOG_PATH", str(tmp_path / "pipeline.jsonl"))
 
 
@@ -194,3 +196,80 @@ def test_api_rejects_invalid_input(client, payload):
 def test_api_claude_unavailable(client):
     r = client.post("/api/ask", json={"question": "hi", "options": {"generator": "claude"}})
     assert r.status_code == 400
+
+
+# ---------- Supabase sink (no network) ----------
+
+class _FakeResponse:
+    status = 201
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+@pytest.fixture
+def captured(monkeypatch):
+    import rag.sinks
+
+    calls = []
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req)
+        return _FakeResponse()
+
+    monkeypatch.setattr(rag.sinks.urllib.request, "urlopen", fake_urlopen)
+    return calls
+
+
+def test_sink_disabled_without_env(captured):
+    from rag.sinks import SupabaseSink
+
+    assert SupabaseSink().enabled is False
+    assert SupabaseSink().log_eval_run("r", "extractive", {}, {}) is False
+    assert captured == []
+
+
+def test_sink_headers_use_apikey_not_bearer(index, gen, captured):
+    from rag.sinks import SupabaseSink
+
+    sink = SupabaseSink("https://example.supabase.co/", "sb_secret_test")
+    record = ask(ANSWERABLE[0]["question"], index, gen)
+    assert sink.log_query(record, client="test") is True
+    req = captured[0]
+    headers = {k.lower(): v for k, v in req.header_items()}
+    assert req.full_url == "https://example.supabase.co/rest/v1/query_logs"
+    assert headers["apikey"] == "sb_secret_test"
+    assert headers["content-type"] == "application/json"
+    assert headers["prefer"] == "return=minimal"
+    assert "authorization" not in headers
+
+
+def test_sink_chunk_upsert(index, captured):
+    import json
+
+    from rag.sinks import SupabaseSink
+
+    SupabaseSink("https://example.supabase.co", "sb_secret_test").upsert_chunks(index.chunks)
+    req = captured[0]
+    headers = {k.lower(): v for k, v in req.header_items()}
+    assert req.full_url.endswith("/rest/v1/chunks?on_conflict=chunk_id")
+    assert headers["prefer"] == "return=minimal,resolution=merge-duplicates"
+    rows = json.loads(req.data)
+    assert len(rows) == len(index.chunks)
+    assert {"embedding", "fts"}.isdisjoint(rows[0])
+
+
+def test_sink_failure_is_swallowed(monkeypatch):
+    import urllib.error
+
+    import rag.sinks
+
+    def boom(req, timeout=None):
+        raise urllib.error.URLError("offline")
+
+    monkeypatch.setattr(rag.sinks.urllib.request, "urlopen", boom)
+    sink = rag.sinks.SupabaseSink("https://example.supabase.co", "sb_secret_test")
+    assert sink.log_eval_run("r", "extractive", {}, {}) is False

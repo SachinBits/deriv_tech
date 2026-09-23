@@ -12,6 +12,7 @@ from rag.generate import get_generator
 from rag.obs import log, new_run_id
 from rag.pipeline import answer_question
 from rag.retrieve import build_index
+from rag.sinks import get_sink
 
 
 def add_option_flags(parser: argparse.ArgumentParser) -> None:
@@ -136,11 +137,17 @@ def main() -> None:
             f.write("\n")
 
     log("eval_summary", **{k: v for k, v in summary.items() if k != "ablation"})
+    sink = get_sink()
+    if sink.enabled:
+        sink.upsert_chunks(index.chunks)
+        sink.log_queries(records, client="eval")
+        sink.log_eval_run(run_id, generator.name, options.applied(), summary)
     print(f"run {run_id}: {summary['total']} questions | generator={generator.name} | "
           f"validation_pass_rate={summary['validation_pass_rate']} | "
           f"refusal_accuracy={correct}/{n} | hit@{args.k}={summary['retrieval_hit_at_k']} | "
           f"supported={summary['supported_count']} refused={summary['refused_count']} | "
-          f"threshold_off={ablation['threshold_off']['refusal_accuracy']}")
+          f"threshold_off={ablation['threshold_off']['refusal_accuracy']} | "
+          f"supabase={'on' if sink.enabled else 'off'}")
 
 
 if __name__ == "__main__":
